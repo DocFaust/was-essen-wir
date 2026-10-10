@@ -1,6 +1,7 @@
 import { ThemeProvider } from '@mui/material/styles';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { App } from './App';
 import { theme } from './theme';
@@ -8,7 +9,9 @@ import { theme } from './theme';
 function renderApp() {
   return render(
     <ThemeProvider theme={theme}>
-      <App />
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>
     </ThemeProvider>,
   );
 }

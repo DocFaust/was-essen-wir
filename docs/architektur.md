@@ -15,7 +15,11 @@
 
 ## Iteration 1
 
-Lauffähiges Grundgerüst mit `GET /api/status`, Actuator-Health, einer Flyway-Baseline ohne fachliche Tabellen und einer Startseite, die den Backend-Status anzeigt. Keine Gerichte, Bewertungen, Authentifizierung oder KI.
+Lauffähiges Grundgerüst mit `GET /api/status`, Actuator-Health, einer Flyway-Baseline ohne fachliche Tabellen und einer Startseite, die den Backend-Status anzeigt.
+
+## Iteration 2
+
+Gerichte, Varianten und Zutaten über JDBC und Flyway. Die Vererbung optionaler Varianteneigenschaften berechnet ausschließlich das Backend und liefert sie in der API mit. Die Oberfläche zeigt diese aufgelösten Werte an und sendet die gespeicherten Angaben zurück. Authentifizierung, Bewertungen, Vorschläge, Planung und KI bleiben späteren Iterationen vorbehalten. Bis zur Anmeldung ist die Gerichte-API im privaten Heimnetz ohne Benutzerkontext erreichbar.
 
 ## Laufzeitgrenzen
 

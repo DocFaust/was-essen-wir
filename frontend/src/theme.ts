@@ -36,6 +36,7 @@ export const theme = createTheme({
           minHeight: 48,
           textTransform: 'none',
           fontSize: '1rem',
+          scrollMarginBottom: '16px',
         },
       },
     },

@@ -1,8 +1,8 @@
 # Fachkonzept – Was essen wir?
 
-**Version:** 1.3 · **Stand:** 10.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
+**Version:** 1.4 · **Stand:** 10.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
 
-Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Iteration 1 liefert nur das Projektgrundgerüst, noch keine Fachfunktionen.
+Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Iteration 2 ergänzt die Gerichteverwaltung. Anmeldung, Bewertungen, Vorschläge, Planung und KI folgen später.
 
 ## 1. Ziel und Abgrenzung
 
@@ -24,8 +24,9 @@ Eine für eine einzelne Familie pro Installation bestimmte, mobil nutzbare Weban
 
 ## 3. Gerichte, Varianten und Zutaten
 
-- **Grundgericht:** Pflichtfeld Name; optional Beschreibung, Mahlzeitentypen, Kategorien, Aufwand, Zutaten, Rezepttext/-link und Kommentare.
-- **Variante:** Optionales Kind eines Grundgerichts, z. B. Pizza → Salami/Margherita. Varianten können abweichende Eigenschaften und eigene Bewertungen haben.
+- **Grundgericht:** Pflichtfeld Name; optional Beschreibung, Mahlzeitentypen, Kategorien, Aufwand, Zutaten, Rezepttext, Rezeptlink, Rezeptquelle und Kommentare.
+- **Rezeptquelle:** optionaler Freitext, keine Auswahlliste und keine eigene Entität. Beispiele: Eigenkreation, Thermomix / Cookidoo, Rezeptbuch „Bayerische Küche“, Seite 42, Chefkoch, Von Oma.
+- **Variante:** Optionales Kind eines Grundgerichts, z. B. Pizza → Salami/Margherita. Varianten können abweichende Eigenschaften und eigene Bewertungen haben. Die Vererbung optionaler Eigenschaften steht in Abschnitt 3.3.
 - Bewertungen von Grundgericht und Variante sind getrennt; keine automatische Überschreibung oder implizite Gleichsetzung. Für noch nicht bewertete Varianten kann das System die Bewertung des Grundgerichts als schwächeren Hinweis nutzen (zu validierende Standardregel).
 - **Aufwand:** optional `EINFACH`, `MITTEL`, `AUFWENDIG`; keine Pflicht zur Zeitangabe.
 - **Zutaten:** optionale Liste von Zutatennamen pro Gericht/Variante; keine Mengen oder Lagerbestände. Nicht dokumentierte Zutaten bedeuten *unbekannt*, nicht *frei davon*.
@@ -39,6 +40,7 @@ Eine für eine einzelne Familie pro Installation bestimmte, mobil nutzbare Weban
 - Fehlende Eignungsmerkmale bedeuten **nicht geprüft**, nicht automatisch **ungeeignet**. Das UI soll dies unterscheiden können.
 - Optionaler späterer Ausbau: `KALT_ESSBAR` und `AUFWAERMBAR` als zusätzliche Merkmale. Noch keine verbindliche Anforderung.
 - Ein Gericht kann gleichzeitig für beide Kontexte geeignet sein; Varianten dürfen eine abweichende Eignung haben.
+- **Nicht festgelegt** und **ausdrücklich nicht geeignet** sind verschiedene Angaben. Nur eine gesetzte Angabe geht in Filter und spätere Vorschläge ein.
 
 ### 3.2 Meal-Prep-Planung (verbindlich)
 
@@ -48,6 +50,18 @@ Zwei gleichberechtigte Abläufe werden unterstützt:
 2. **Zusätzliche Portion:** Beim Planen oder Erfassen eines gemeinsamen Kochvorgangs eine oder mehrere Portionen für spätere Mahlzeiten vorsehen.
 
 Eine vorbereitete Portion referenziert optional den ursprünglichen Kochvorgang, hat eine Zielperson, ein geplantes Verzehrdatum und einen Status (geplant, vorbereitet, verzehrt oder verworfen). Einfache Portionsanzahl ist zulässig, jedoch keine Zutatenmengen, Lager- oder Vorratsverwaltung. Optional kann markiert werden, ob ein Gericht kalt essbar oder aufzuwärmen ist; eine nicht gepflegte Angabe bleibt unbekannt. Dass etwas vorbereitet wurde, bedeutet nicht automatisch, dass es gegessen wurde.
+
+### 3.3 Vererbung von Varianten
+
+Eine Variante überschreibt nur Eigenschaften, die bei ihr gesetzt sind. Nicht gesetzte optionale Eigenschaften werden vom Grundgericht übernommen. Mahlzeitentypen, Kategorien und Kommentare gehören nur zum Grundgericht.
+
+| Eigenschaft | Nicht gesetzt bei der Variante | Gesetzt bei der Variante |
+| --- | --- | --- |
+| Beschreibung, Aufwand, Rezepttext, Rezeptlink, Rezeptquelle | Wert des Grundgerichts | Eigener, nicht leerer Wert |
+| Zutaten | Liste des Grundgerichts | Eigene Liste, die auch leer sein darf |
+| Meal Prep, Homeoffice | Eignung des Grundgerichts: nicht geprüft, geeignet oder nicht geeignet | Eigene Eignung, einschließlich ausdrücklich nicht geeignet |
+
+Ein leeres Textfeld ist nicht gesetzt und wird nicht gespeichert. Deshalb zeigt eine Variante ohne eigene Rezeptquelle die Quelle des Grundgerichts. Bei Zutaten und Eignungsmerkmalen bleibt der Unterschied zwischen „nicht festgelegt“ und einem gesetzten Wert erhalten, auch wenn die eigene Zutatenliste leer oder die Eignung ausdrücklich verneint ist. API und Oberfläche verwenden dieselbe, serverseitig aufgelöste Darstellung.
 
 ## 4. Persönliche Bewertungen
 
