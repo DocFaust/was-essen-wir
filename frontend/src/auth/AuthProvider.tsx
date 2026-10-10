@@ -122,3 +122,7 @@ export function useAuth(): AuthContextValue {
   }
   return value;
 }
+
+export function useViewerId(): string | null {
+  return useContext(AuthContext)?.user?.id ?? null;
+}

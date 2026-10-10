@@ -48,3 +48,29 @@ export function deleteVariant(dishId: string, variantId: string): Promise<DishDe
   return request<DishDetail>(`/api/dishes/${dishId}/variants/${variantId}`, { method: 'DELETE' });
 }
 
+export type RatingValue = {
+  stars: number | null;
+};
+
+export function setDishRating(id: string, stars: number): Promise<RatingValue> {
+  return request<RatingValue>(`/api/dishes/${id}/rating`, {
+    method: 'PUT',
+    body: JSON.stringify({ stars }),
+  });
+}
+
+export function clearDishRating(id: string): Promise<void> {
+  return request<void>(`/api/dishes/${id}/rating`, { method: 'DELETE' });
+}
+
+export function setVariantRating(dishId: string, variantId: string, stars: number): Promise<RatingValue> {
+  return request<RatingValue>(`/api/dishes/${dishId}/variants/${variantId}/rating`, {
+    method: 'PUT',
+    body: JSON.stringify({ stars }),
+  });
+}
+
+export function clearVariantRating(dishId: string, variantId: string): Promise<void> {
+  return request<void>(`/api/dishes/${dishId}/variants/${variantId}/rating`, { method: 'DELETE' });
+}
+

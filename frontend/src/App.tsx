@@ -86,8 +86,8 @@ function AppShell() {
           {phase === 'setup' ? <SetupPage /> : null}
           {phase === 'anonymous' ? <LoginPage /> : null}
           {phase === 'ready' && user?.passwordChangeRequired ? <PasswordChangePage /> : null}
-          {showNavigation ? (
-            <Routes>
+          {showNavigation && user ? (
+            <Routes key={user.id}>
               <Route path="/" element={<HomePage />} />
               <Route path="/gerichte" element={<DishListPage />} />
               <Route path="/gerichte/neu" element={<DishFormPage />} />

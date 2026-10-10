@@ -29,6 +29,10 @@ Solange kein Administrator existiert, ist die Einrichtung offen. Das Backend erz
 
 `APP_SESSION_COOKIE_SECURE` steht standardmäßig auf `false`, weil das Heimnetz per HTTP erreichbar ist. Browser verwerfen `Secure`-Cookies auf reinem HTTP. Ein späterer HTTPS-Zugang setzt die Variable auf `true`.
 
+## Iteration 4
+
+Persönliche Sternebewertungen liegen in einer gemeinsamen Tabelle für Grundgericht und Variante. Die Benutzer-ID kommt nur aus der Sitzung. Antworten enthalten keine fremden Bewertungen. API-Antworten senden `Cache-Control: no-store`, das Frontend speichert Bewertungen nicht in `localStorage` und lädt sie nach einem Benutzerwechsel neu.
+
 ## Laufzeitgrenzen
 
 Im Standard-Compose ist PostgreSQL nicht auf dem Host veröffentlicht. Das Frontend ist der einzige veröffentlichte Dienst und leitet `/api` an das Backend weiter. Actuator bleibt im internen Backend-Netz und liefert keine Konfigurationsdetails. `GET /api/status` und `GET /actuator/health` bleiben ohne Anmeldung erreichbar, damit die bestehende Gesundheitsprüfung funktioniert. Sie enthalten keine Benutzer- oder Token-Daten. Alle Gerichte- und Benutzerendpunkte verlangen eine gültige Sitzung.

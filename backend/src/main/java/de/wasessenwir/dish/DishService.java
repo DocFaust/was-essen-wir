@@ -1,8 +1,12 @@
 package de.wasessenwir.dish;
 
+import de.wasessenwir.rating.DishRatingView;
+import de.wasessenwir.rating.RatingRepository;
+import de.wasessenwir.security.CurrentUser;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -12,9 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class DishService {
 
     private final DishRepository repository;
+    private final RatingRepository ratings;
 
-    public DishService(DishRepository repository) {
+    public DishService(DishRepository repository, RatingRepository ratings) {
         this.repository = repository;
+        this.ratings = ratings;
     }
 
     @Transactional
@@ -65,9 +71,9 @@ public class DishService {
             Effort effort,
             Suitability mealPrep,
             Suitability homeOffice) {
-        return repository.search(blankToNull(query), mealType, effort, mealPrep, homeOffice).stream()
-                .map(this::summary)
-                .toList();
+        List<UUID> ids = repository.search(blankToNull(query), mealType, effort, mealPrep, homeOffice);
+        Map<UUID, Integer> ownRatings = ratings.findDishStars(CurrentUser.requireId(), ids);
+        return ids.stream().map(id -> summary(id, ownRatings.get(id))).toList();
     }
 
     @Transactional
@@ -126,8 +132,9 @@ public class DishService {
         StoredDish dish = repository.findDish(id)
                 .orElseThrow(() -> new NotFoundException("Gericht wurde nicht gefunden."));
         List<String> ingredients = repository.findDishIngredients(id);
+        DishRatingView ownRatings = ratings.findForDish(CurrentUser.requireId(), id);
         List<VariantResponse> variants = repository.findVariants(id).stream()
-                .map(variant -> toVariant(dish, ingredients, variant))
+                .map(variant -> toVariant(dish, ingredients, variant, ownRatings.variantStars(variant.id())))
                 .toList();
         return new DishDetailResponse(
                 dish.id(),
@@ -143,10 +150,11 @@ public class DishService {
                 dish.comments(),
                 suitability(dish.mealPrep()),
                 suitability(dish.homeOffice()),
+                ownRatings.dishStars(),
                 variants);
     }
 
-    private DishSummaryResponse summary(UUID id) {
+    private DishSummaryResponse summary(UUID id, Integer myRating) {
         StoredDish dish = repository.findDish(id)
                 .orElseThrow(() -> new NotFoundException("Gericht wurde nicht gefunden."));
         return new DishSummaryResponse(
@@ -156,10 +164,12 @@ public class DishService {
                 dish.effort(),
                 suitability(dish.mealPrep()),
                 suitability(dish.homeOffice()),
-                repository.findVariants(id).stream().map(StoredVariant::name).toList());
+                repository.findVariants(id).stream().map(StoredVariant::name).toList(),
+                myRating);
     }
 
-    private VariantResponse toVariant(StoredDish dish, List<String> dishIngredients, StoredVariant variant) {
+    private VariantResponse toVariant(
+            StoredDish dish, List<String> dishIngredients, StoredVariant variant, Integer myRating) {
         List<String> ownIngredients = repository.findVariantIngredients(variant.id());
         Suitability dishMealPrep = suitability(dish.mealPrep());
         Suitability dishHomeOffice = suitability(dish.homeOffice());
@@ -194,7 +204,8 @@ public class DishService {
                 variant.recipeSource(),
                 mealPrep,
                 homeOffice,
-                resolved);
+                resolved,
+                myRating);
     }
 
     private void ensureDishNameAvailable(String name, UUID excludeId, boolean confirmDuplicate) {

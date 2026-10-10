@@ -1,6 +1,6 @@
 # Datenmodell
 
-Iteration 3 persistiert Benutzer und den Einrichtungszustand. Bewertungen, Planung, Historie, Vorschläge, Abstimmungen und Audit bleiben Kandidaten für spätere Iterationen: `Rating`, `PreferenceRule`, `MealPlan`, `MealHistory`, `MealParticipant`, `PreparedPortion`, `SuggestionSession`, `DecisionEvent`, `Vote`, `AuditEvent`.
+Iteration 4 persistiert persönliche Bewertungen. Planung, Historie, Vorschläge, Abstimmungen und Audit bleiben Kandidaten für spätere Iterationen: `PreferenceRule`, `MealPlan`, `MealHistory`, `MealParticipant`, `PreparedPortion`, `SuggestionSession`, `DecisionEvent`, `Vote`, `AuditEvent`.
 
 `PreparedPortion` erhält später Empfänger, Verzehrdatum, Status und eine optionale Referenz auf den ursprünglichen Kochvorgang. Keine Lagerbestandsverwaltung.
 
@@ -49,6 +49,21 @@ Gleichnamige Grundgerichte sind erlaubt, werden aber ohne ausdrückliche Bestät
 
 Genau eine Zeile. `token_hash` ist SHA-256 des Setup-Tokens. `expires_at` begrenzt die Gültigkeit, Standard 24 Stunden. `completed_at` beendet die Einrichtung dauerhaft; danach ist `token_hash` leer. Der Klartext des Tokens wird nicht gespeichert.
 
+## Bewertung `rating`
+
+Eine Tabelle für beide Ziele, analog zu `ingredient`. Grundgericht und Variante teilen sich Benutzer, Sterne und Zeitstempel. Getrennte Tabellen würden dieselben Regeln doppelt führen und die gemeinsame Abfrage für die Übersicht erschweren. Ein Bewertungsziel ist immer genau eines: `dish_id` oder `variant_id`.
+
+| Spalte | Bedeutung |
+| --- | --- |
+| `id` | UUID, von der Anwendung vergeben |
+| `user_id` | bewertende Person, aus der Sitzung, nicht aus der Anfrage |
+| `dish_id` | Grundgericht, sonst leer |
+| `variant_id` | Variante, sonst leer |
+| `stars` | 1 bis 5 |
+| `created_at`, `updated_at` | Zeitpunkte; Ändern lässt `created_at` stehen |
+
+`rating_one_target` verlangt genau eine der beiden Referenzen. `rating_stars_range` lässt nur 1 bis 5 zu. Teilindizes erzwingen höchstens eine Zeile pro Benutzer und Grundgericht und pro Benutzer und Variante. Fremdschlüssel mit `ON DELETE CASCADE` entfernen Bewertungen, wenn das Gericht, die Variante oder das Benutzerkonto gelöscht wird. Eine Variante zu löschen lässt die Bewertung des Grundgerichts stehen. Fehlende Zeile bedeutet *nicht bewertet*, nicht drei Sterne.
+
 ## API
 
 Öffentlich, jeweils mit CSRF bei zustandsändernden Aufrufen:
@@ -89,5 +104,21 @@ Die Gerichte-Collection liegt unter `/api/dishes` und verlangt eine gültige Anm
 Die Suche `q` prüft Gerichts- und Variantennamen. Filter `mealType`, `effort`, `mealPrep` und `homeOffice` gelten gemeinsam und beziehen sich auf das Grundgericht. Eignungsfilter sind `SUITABLE`, `UNSUITABLE` oder `UNKNOWN`.
 
 Schreibende Gerichts-Payloads enthalten `confirmDuplicate`. Ohne `true` antwortet ein gleichnamiges weiteres Gericht mit `409` und `code=DUPLICATE_DISH_NAME`. Validierung antwortet mit `400`, unbekannte IDs mit `404`.
+
+Gerichteantworten enthalten zusätzlich `myRating`: die Sterne der angemeldeten Person oder `null`. Dasselbe Feld steht an jeder Variante in der Detailantwort. Die Übersicht lädt diese Werte in einer Abfrage, nicht pro Gericht.
+
+Eigene Bewertungen, jeweils nur für die Sitzung:
+
+| Methode | Pfad | Erfolg |
+| --- | --- | --- |
+| `GET` | `/api/ratings` | alle eigenen Bewertungen, ohne fremde Zeilen |
+| `GET` | `/api/dishes/{id}/rating` | `{ "stars": 1–5 }` oder `{ "stars": null }` |
+| `PUT` | `/api/dishes/{id}/rating` | setzt oder ändert `{ "stars": 1–5 }`, idempotent |
+| `DELETE` | `/api/dishes/{id}/rating` | `204`, auch wenn noch keine Bewertung existiert |
+| `GET` | `/api/dishes/{id}/variants/{variantId}/rating` | wie beim Grundgericht |
+| `PUT` | `/api/dishes/{id}/variants/{variantId}/rating` | setzt oder ändert die Variante |
+| `DELETE` | `/api/dishes/{id}/variants/{variantId}/rating` | `204` |
+
+Der Körper enthält nur `stars`. Eine mitgesendete Benutzer-ID wird nicht verwendet. `0` und `6` antworten mit `400`. Unbekannte Gerichte oder Varianten antworten mit `404`.
 
 Eignungswerte eines Grundgerichts sind `UNKNOWN`, `SUITABLE` und `UNSUITABLE`. Eine Variante sendet `INHERIT`, `SUITABLE` oder `UNSUITABLE`. In `resolved` steht der wirksame Wert und ob er übernommen wurde. Die Oberfläche zeigt `resolved` an und schickt die gespeicherten Felder beim Speichern zurück.

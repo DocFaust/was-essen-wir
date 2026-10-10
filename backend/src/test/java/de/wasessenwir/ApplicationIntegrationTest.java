@@ -57,6 +57,15 @@ class ApplicationIntegrationTest {
     }
 
     @Test
+    void flywayAppliesRatingMigration() {
+        Integer applied = jdbcTemplate.queryForObject(
+                "select count(*) from flyway_schema_history where version = '4' and success",
+                Integer.class);
+
+        assertThat(applied).isEqualTo(1);
+    }
+
+    @Test
     void dishesRequireAuthentication() {
         var response = restTemplate.getForEntity("/api/dishes", String.class);
 

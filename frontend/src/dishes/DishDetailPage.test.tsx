@@ -53,8 +53,10 @@ const dish: DishDetail = {
         homeOffice: 'UNSUITABLE',
         homeOfficeInherited: false,
       },
+      myRating: null,
     },
   ],
+  myRating: null,
 };
 
 test('zeigt die übernommene Rezeptquelle einer Variante', async () => {

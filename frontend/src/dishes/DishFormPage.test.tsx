@@ -21,6 +21,7 @@ const saved: DishDetail = {
   comments: null,
   mealPrep: 'UNKNOWN',
   homeOffice: 'UNKNOWN',
+  myRating: null,
   variants: [],
 };
 

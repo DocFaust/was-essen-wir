@@ -10,5 +10,6 @@ public record DishSummaryResponse(
         Effort effort,
         Suitability mealPrep,
         Suitability homeOffice,
-        List<String> variantNames) {
+        List<String> variantNames,
+        Integer myRating) {
 }

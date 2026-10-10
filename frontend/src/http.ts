@@ -60,6 +60,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
       headers,
       credentials: 'same-origin',
+      cache: 'no-store',
     });
   } catch {
     throw new ApiError(UNREACHABLE, 0);

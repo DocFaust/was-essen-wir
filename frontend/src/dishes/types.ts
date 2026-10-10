@@ -35,6 +35,7 @@ export type DishVariant = {
   mealPrep: SuitabilitySetting;
   homeOffice: SuitabilitySetting;
   resolved: ResolvedProperties;
+  myRating: number | null;
 };
 
 export type DishDetail = {
@@ -51,6 +52,7 @@ export type DishDetail = {
   comments: string | null;
   mealPrep: Suitability;
   homeOffice: Suitability;
+  myRating: number | null;
   variants: DishVariant[];
 };
 
@@ -62,6 +64,7 @@ export type DishSummary = {
   mealPrep: Suitability;
   homeOffice: Suitability;
   variantNames: string[];
+  myRating: number | null;
 };
 
 export type DishWrite = {
