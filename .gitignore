@@ -1,0 +1,32 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Java / Gradle
+.gradle/
+**/build/
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/playwright/.cache/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local data and logs
+*.log
+postgres-data/
+backups/

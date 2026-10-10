@@ -1,0 +1,25 @@
+{
+  "name": "Was essen wir?",
+  "short_name": "Essen",
+  "description": "Familien-Essensplaner für das private Heimnetz.",
+  "lang": "de",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f7f4",
+  "theme_color": "#2e7d32",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

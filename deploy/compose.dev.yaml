@@ -1,0 +1,6 @@
+# Publishes PostgreSQL only for backend development on the host.
+# The default stack in compose.yaml keeps the database off the host network.
+services:
+  postgres:
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
