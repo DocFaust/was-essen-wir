@@ -29,6 +29,7 @@ server:
         secure: ${APP_SESSION_COOKIE_SECURE:false}
 
 app:
+  time-zone: ${APP_TIME_ZONE:Europe/Berlin}
   setup:
     token-ttl: ${APP_SETUP_TOKEN_TTL:PT24H}
     rotate-token: ${APP_SETUP_ROTATE_TOKEN:false}

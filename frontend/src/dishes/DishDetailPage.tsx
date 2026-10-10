@@ -19,6 +19,10 @@ import { StarRating } from './StarRating';
 import type { DishDetail, DishVariant } from './types';
 import { useRatingActions } from './useRatingActions';
 import { ConfirmDialog, ErrorState, LoadingState, Notice } from './ui';
+import { MealEventForm } from '../meals/MealEventForm';
+import { todayIso } from '../meals/dates';
+import { createHistory, createPlan } from '../meals/api';
+import type { MealDraft, MealEventWrite } from '../meals/types';
 
 export function DishDetailPage() {
   const { id } = useParams();
@@ -32,6 +36,7 @@ export function DishDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [variantToDelete, setVariantToDelete] = useState<DishVariant | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [mealDraft, setMealDraft] = useState<MealDraft | null>(null);
   const [seenViewer, setSeenViewer] = useState(viewerId);
   const ratings = useRatingActions();
   if (seenViewer !== viewerId) {
@@ -125,6 +130,34 @@ export function DishDetailPage() {
     }
   }
 
+  function openMeal(mode: MealDraft['mode'], variantId?: string) {
+    if (!dish || !viewerId) {
+      return;
+    }
+    const mealType = dish.mealTypes.length === 1 ? dish.mealTypes[0] : 'ABENDESSEN';
+    setMealDraft({
+      mode,
+      mealDate: todayIso(),
+      mealType,
+      dishId: dish.id,
+      variantId: variantId ?? null,
+      dinerIds: [viewerId],
+    });
+  }
+
+  async function saveMeal(body: MealEventWrite) {
+    if (!mealDraft) {
+      return;
+    }
+    if (mealDraft.mode === 'plan') {
+      await createPlan(body);
+    } else {
+      await createHistory(body);
+    }
+    setMealDraft(null);
+    setActionError(null);
+  }
+
   async function confirmDeleteVariant() {
     if (!dish || !variantToDelete) {
       return;
@@ -170,6 +203,12 @@ export function DishDetailPage() {
         onClear={() => rateDish(null)}
         testId="dish-rating"
       />
+      <Button type="button" variant="contained" fullWidth data-testid="dish-plan" onClick={() => openMeal('plan')}>
+        Einplanen
+      </Button>
+      <Button type="button" variant="outlined" fullWidth data-testid="dish-eaten" onClick={() => openMeal('eaten')}>
+        Als gegessen eintragen
+      </Button>
       <Notice message={noticeFrom(location.state)} />
       {actionError ? <ErrorState message={actionError} /> : null}
       <DetailLine label="Beschreibung" value={dish.description} />
@@ -230,6 +269,12 @@ export function DishDetailPage() {
             value={SUITABILITY_LABELS[variant.resolved.homeOffice]}
             inherited={variant.resolved.homeOfficeInherited}
           />
+          <Button type="button" variant="outlined" fullWidth onClick={() => openMeal('plan', variant.id)}>
+            Variante einplanen
+          </Button>
+          <Button type="button" variant="outlined" fullWidth onClick={() => openMeal('eaten', variant.id)}>
+            Variante als gegessen eintragen
+          </Button>
           <Button component={RouterLink} to={`/gerichte/${dish.id}/varianten/${variant.id}/bearbeiten`} variant="outlined" fullWidth>
             Variante bearbeiten
           </Button>
@@ -250,7 +295,7 @@ export function DishDetailPage() {
       <ConfirmDialog
         open={deleteOpen}
         title="Gericht löschen?"
-        message={`„${dish.name}“ und alle Varianten werden entfernt.`}
+        message={`„${dish.name}“ und alle Varianten werden entfernt. Bereits erfasste Mahlzeiten bleiben in der Historie.`}
         confirmLabel="Löschen"
         confirmColor="error"
         confirmTestId="confirm-delete"
@@ -266,6 +311,9 @@ export function DishDetailPage() {
         onConfirm={() => void confirmDeleteVariant()}
         onClose={() => setVariantToDelete(null)}
       />
+      {viewerId ? (
+        <MealEventForm draft={mealDraft} userId={viewerId} onClose={() => setMealDraft(null)} onSubmit={saveMeal} />
+      ) : null}
     </Stack>
   );
 }

@@ -18,6 +18,17 @@ public final class RecommendationEngine {
             RecommendationPreferences preferences,
             Set<UUID> excludedDishIds,
             RandomGenerator random) {
+        return recommend(candidates, ratings, dinerIds, preferences, excludedDishIds, random, RepetitionIndex.empty());
+    }
+
+    public static EngineResult recommend(
+            List<Candidate> candidates,
+            RatingLookup ratings,
+            List<UUID> dinerIds,
+            RecommendationPreferences preferences,
+            Set<UUID> excludedDishIds,
+            RandomGenerator random,
+            RepetitionIndex repetition) {
         LinkedHashSet<UUID> families = new LinkedHashSet<>();
         List<Candidate> available = new ArrayList<>();
         for (Candidate candidate : candidates) {
@@ -27,7 +38,7 @@ public final class RecommendationEngine {
             }
         }
         List<ScoredCandidate> scored = available.stream()
-                .map(candidate -> RecommendationScorer.score(candidate, dinerIds, ratings, preferences))
+                .map(candidate -> RecommendationScorer.score(candidate, dinerIds, ratings, preferences, repetition))
                 .toList();
         List<ScoredCandidate> picked = SuggestionPicker.pick(scored, random, RecommendationWeights.SUGGESTION_LIMIT);
         List<RankedSuggestion> suggestions = picked.stream()
