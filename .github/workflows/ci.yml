@@ -98,10 +98,6 @@ jobs:
       - name: Smoke-Test gegen die isolierte Umgebung
         run: node --check scripts/e2e.mjs && node scripts/e2e.mjs
 
-      - name: Testumgebung entfernen
-        if: always()
-        run: docker compose --project-name was-essen-wir-e2e -f deploy/compose.yaml down --volumes --remove-orphans
-
       - name: Screenshots und Traces hochladen
         if: failure()
         uses: actions/upload-artifact@v7.0.2
