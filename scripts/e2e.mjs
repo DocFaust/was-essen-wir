@@ -31,9 +31,36 @@ function run(command, args, cwd = root) {
   });
 }
 
+function capture(command, args, cwd = root) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { cwd, env });
+    let output = '';
+    child.stdout?.on('data', (chunk) => {
+      output += chunk;
+    });
+    child.stderr?.on('data', (chunk) => {
+      output += chunk;
+    });
+    child.on('error', reject);
+    child.on('exit', (code) => {
+      if (code === 0) {
+        resolve(output);
+        return;
+      }
+      reject(new Error(`${command} ${args.join(' ')} exited with ${code}`));
+    });
+  });
+}
+
 let exitCode = 0;
 try {
   await run('docker', [...compose, 'up', '--build', '--detach', '--wait', '--wait-timeout', '600']);
+  const logs = await capture('docker', [...compose, 'logs', 'backend']);
+  const matches = [...logs.matchAll(/SETUP_TOKEN\s+([A-Za-z0-9_-]+)/g)];
+  if (matches.length === 0) {
+    throw new Error('Das Setup-Token steht nicht in den Backend-Logs.');
+  }
+  env.E2E_SETUP_TOKEN = matches[matches.length - 1][1];
   const playwrightCli = path.join(root, 'frontend', 'node_modules', '@playwright', 'test', 'cli.js');
   await run(process.execPath, [playwrightCli, 'test'], path.join(root, 'frontend'));
 } catch (error) {

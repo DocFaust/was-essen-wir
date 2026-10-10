@@ -95,7 +95,7 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      - name: Smoke-Test gegen die isolierte Umgebung
+      - name: E2E-Test gegen die isolierte Umgebung
         run: node --check scripts/e2e.mjs && node scripts/e2e.mjs
 
       - name: Screenshots und Traces hochladen

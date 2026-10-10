@@ -18,6 +18,25 @@ server:
     include-message: never
     include-binding-errors: never
     include-stacktrace: never
+  servlet:
+    session:
+      timeout: ${APP_SESSION_TIMEOUT:12h}
+      tracking-modes: cookie
+      cookie:
+        name: WAEW_SESSION
+        http-only: true
+        same-site: lax
+        secure: ${APP_SESSION_COOKIE_SECURE:false}
+
+app:
+  setup:
+    token-ttl: ${APP_SETUP_TOKEN_TTL:PT24H}
+    rotate-token: ${APP_SETUP_ROTATE_TOKEN:false}
+  security:
+    login-max-attempts: ${APP_LOGIN_MAX_ATTEMPTS:8}
+    login-window: ${APP_LOGIN_WINDOW:PT15M}
+    setup-max-attempts: ${APP_SETUP_MAX_ATTEMPTS:8}
+    setup-window: ${APP_SETUP_WINDOW:PT15M}
 
 management:
   endpoints:
