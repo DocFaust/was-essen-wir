@@ -2,7 +2,7 @@
 
 **Version:** 1.4 · **Stand:** 10.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
 
-Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Iteration 2 ergänzt die Gerichteverwaltung. Anmeldung, Bewertungen, Vorschläge, Planung und KI folgen später.
+Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung sowie lokale Anmeldung sind umgesetzt. Bewertungen, Vorschläge, Planung und KI folgen später.
 
 ## 1. Ziel und Abgrenzung
 

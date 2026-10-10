@@ -2,17 +2,25 @@ package de.wasessenwir.dish;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import de.wasessenwir.security.LoginRequest;
+import de.wasessenwir.setup.CapturingSetupTokenPublisher;
+import de.wasessenwir.setup.SetupRequest;
+import de.wasessenwir.setup.SetupStatusResponse;
+import de.wasessenwir.support.ApiSessions;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -21,6 +29,8 @@ import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
+@ActiveProfiles("test")
+@Import(CapturingSetupTokenPublisher.class)
 @Testcontainers
 class DishApiIntegrationTest {
 
@@ -28,11 +38,34 @@ class DishApiIntegrationTest {
     @ServiceConnection
     static final PostgreSQLContainer postgres = new PostgreSQLContainer(DockerImageName.parse("postgres:17-alpine"));
 
+    private static final String PASSWORD = "ein-langes-passwort";
+
     @Autowired
+    private TestRestTemplate rawTemplate;
+
+    @Autowired
+    private CapturingSetupTokenPublisher tokens;
+
     private TestRestTemplate restTemplate;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void signIn() {
+        restTemplate = new ApiSessions(rawTemplate).open();
+        SetupStatusResponse status = restTemplate.getForEntity("/api/setup/status", SetupStatusResponse.class).getBody();
+        if (status != null && status.setupRequired()) {
+            ResponseEntity<String> setup = restTemplate.postForEntity(
+                    "/api/setup",
+                    new SetupRequest("Ada", "Ada Lovelace", PASSWORD, PASSWORD, tokens.token()),
+                    String.class);
+            assertThat(setup.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        }
+        ResponseEntity<String> login = restTemplate.postForEntity(
+                "/api/auth/login", new LoginRequest("Ada", PASSWORD), String.class);
+        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
 
     @Test
     void flywayAppliesDishMigration() {

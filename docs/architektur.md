@@ -10,7 +10,7 @@
 - Persistenz: PostgreSQL. Schema-Migrationen mit Flyway.
 - Betrieb: Docker Compose. Zielplattform ist ein Raspberry Pi 5 (`linux/arm64`). Entwicklung auf Windows und Linux. Ausschließlich privates Heimnetz, keine öffentliche Internetfreigabe.
 - Konfiguration über Umgebungsvariablen. `.env` bleibt lokal. `.env.example` enthält keine echten Geheimnisse.
-- Authentifizierung in einer späteren Iteration: Spring Security mit lokaler Benutzerverwaltung und serverseitigen Sessions. Keine Keycloak-, OAuth2- oder separate Authentifizierungsinfrastruktur.
+- Authentifizierung: Spring Security mit lokaler Benutzerverwaltung und serverseitigen HTTP-Sessions. Keine Keycloak-, OAuth2-, JWT- oder separate Authentifizierungsinfrastruktur. Keine öffentliche Selbstregistrierung und keine E-Mail-Verifizierung.
 - KI in einer späteren Iteration: OpenAI-API nur serverseitig, über eine austauschbare Provider-Abstraktion. Die KI erhält keinen Datenbankzugriff. Kernfunktionen bleiben ohne LLM nutzbar.
 
 ## Iteration 1
@@ -19,8 +19,16 @@ Lauffähiges Grundgerüst mit `GET /api/status`, Actuator-Health, einer Flyway-B
 
 ## Iteration 2
 
-Gerichte, Varianten und Zutaten über JDBC und Flyway. Die Vererbung optionaler Varianteneigenschaften berechnet ausschließlich das Backend und liefert sie in der API mit. Die Oberfläche zeigt diese aufgelösten Werte an und sendet die gespeicherten Angaben zurück. Authentifizierung, Bewertungen, Vorschläge, Planung und KI bleiben späteren Iterationen vorbehalten. Bis zur Anmeldung ist die Gerichte-API im privaten Heimnetz ohne Benutzerkontext erreichbar.
+Gerichte, Varianten und Zutaten über JDBC und Flyway. Die Vererbung optionaler Varianteneigenschaften berechnet ausschließlich das Backend und liefert sie in der API mit. Die Oberfläche zeigt diese aufgelösten Werte an und sendet die gespeicherten Angaben zurück.
+
+## Iteration 3
+
+Lokale Benutzer mit den Rollen `ADMIN` und `MEMBER`. Passwörter liegen als BCrypt-Hashes vor. Die Anmeldung erzeugt eine serverseitige Session, erneuert die Session-ID und setzt ein `HttpOnly`-Cookie `WAEW_SESSION` mit `SameSite=Lax`. CSRF bleibt aktiv: das Frontend liest das Cookie `XSRF-TOKEN` und sendet es als Kopfzeile `X-XSRF-TOKEN`. Authentifizierungsdaten werden nicht in `localStorage` gespeichert.
+
+Solange kein Administrator existiert, ist die Einrichtung offen. Das Backend erzeugt dafür ein zufälliges Setup-Token, speichert nur seinen SHA-256-Hash und schreibt das Token einmalig ins Log. Die Ersteinrichtung prüft dieses Token in einer Datenbanktransaktion mit Sperre und kann genau einmal gelingen. Danach ist das Token ungültig, auch nach einem Neustart.
+
+`APP_SESSION_COOKIE_SECURE` steht standardmäßig auf `false`, weil das Heimnetz per HTTP erreichbar ist. Browser verwerfen `Secure`-Cookies auf reinem HTTP. Ein späterer HTTPS-Zugang setzt die Variable auf `true`.
 
 ## Laufzeitgrenzen
 
-Im Standard-Compose ist PostgreSQL nicht auf dem Host veröffentlicht. Das Frontend ist der einzige veröffentlichte Dienst und leitet `/api` an das Backend weiter. Actuator bleibt im internen Backend-Netz und liefert keine Konfigurationsdetails.
+Im Standard-Compose ist PostgreSQL nicht auf dem Host veröffentlicht. Das Frontend ist der einzige veröffentlichte Dienst und leitet `/api` an das Backend weiter. Actuator bleibt im internen Backend-Netz und liefert keine Konfigurationsdetails. `GET /api/status` und `GET /actuator/health` bleiben ohne Anmeldung erreichbar, damit die bestehende Gesundheitsprüfung funktioniert. Sie enthalten keine Benutzer- oder Token-Daten. Alle Gerichte- und Benutzerendpunkte verlangen eine gültige Sitzung.

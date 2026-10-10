@@ -1,6 +1,6 @@
 # Datenmodell
 
-Iteration 2 persistiert Gerichte. Benutzer, Bewertungen, Planung, Historie, Vorschläge, Abstimmungen und Audit bleiben Kandidaten für spätere Iterationen: `User`, `Rating`, `PreferenceRule`, `MealPlan`, `MealHistory`, `MealParticipant`, `PreparedPortion`, `SuggestionSession`, `DecisionEvent`, `Vote`, `AuditEvent`.
+Iteration 3 persistiert Benutzer und den Einrichtungszustand. Bewertungen, Planung, Historie, Vorschläge, Abstimmungen und Audit bleiben Kandidaten für spätere Iterationen: `Rating`, `PreferenceRule`, `MealPlan`, `MealHistory`, `MealParticipant`, `PreparedPortion`, `SuggestionSession`, `DecisionEvent`, `Vote`, `AuditEvent`.
 
 `PreparedPortion` erhält später Empfänger, Verzehrdatum, Status und eine optionale Referenz auf den ursprünglichen Kochvorgang. Keine Lagerbestandsverwaltung.
 
@@ -31,9 +31,49 @@ Ein Eintrag gehört entweder zum Grundgericht oder zur Variante. Gespeichert wir
 
 Gleichnamige Grundgerichte sind erlaubt, werden aber ohne ausdrückliche Bestätigung nicht ein zweites Mal angelegt. Dafür gibt es keine Unique-Constraint.
 
+## Benutzer `app_user`
+
+| Spalte | Bedeutung |
+| --- | --- |
+| `id` | UUID, von der Anwendung vergeben |
+| `username` | Anzeigenform, 2–40 Zeichen |
+| `username_normalized` | NFKC, getrimmt, kleingeschrieben; eindeutig |
+| `display_name` | 1–80 Zeichen |
+| `password_hash` | BCrypt, nie in API-Antworten |
+| `role` | `ADMIN` oder `MEMBER` |
+| `active` | deaktivierte Konten können sich nicht anmelden |
+| `password_change_required` | temporäres Passwort muss bei der nächsten Anmeldung ersetzt werden |
+| `created_at`, `updated_at` | Zeitpunkte |
+
+## Einrichtung `app_setup`
+
+Genau eine Zeile. `token_hash` ist SHA-256 des Setup-Tokens. `expires_at` begrenzt die Gültigkeit, Standard 24 Stunden. `completed_at` beendet die Einrichtung dauerhaft; danach ist `token_hash` leer. Der Klartext des Tokens wird nicht gespeichert.
+
 ## API
 
-Die Collection liegt unter `/api/dishes`.
+Öffentlich, jeweils mit CSRF bei zustandsändernden Aufrufen:
+
+| Methode | Pfad | Erfolg |
+| --- | --- | --- |
+| `GET` | `/api/setup/status` | `{ "setupRequired": true/false }`, ohne Token oder Benutzernamen |
+| `POST` | `/api/setup` | `201` und der erste Administrator, genau einmal |
+| `POST` | `/api/auth/login` | angemeldete Person |
+| `POST` | `/api/auth/logout` | `204`, Session serverseitig ungültig |
+
+Angemeldet:
+
+| Methode | Pfad | Wer |
+| --- | --- | --- |
+| `GET` | `/api/auth/me` | jede angemeldete Person |
+| `PUT` | `/api/auth/profile` | eigener Anzeigename |
+| `PUT` | `/api/auth/password` | eigenes Passwort |
+| `GET`, `POST` | `/api/users` | nur `ADMIN` |
+| `PUT` | `/api/users/{id}` | nur `ADMIN`: Anzeigename, Rolle, Aktivierung |
+| `POST` | `/api/users/{id}/password` | nur `ADMIN`: temporäres Passwort |
+
+`401` bedeutet nicht angemeldet oder eine ungültige Sitzung, `403` fehlende Rechte oder ein noch zu änderndes temporäres Passwort, `400` ungültige Eingaben, `409` fachliche Konflikte wie den letzten aktiven Administrator oder einen bereits vergebenen Benutzernamen. Passwort-Hashes erscheinen in keiner Antwort.
+
+Die Gerichte-Collection liegt unter `/api/dishes` und verlangt eine gültige Anmeldung.
 
 | Methode | Pfad | Erfolg |
 | --- | --- | --- |

@@ -2,7 +2,7 @@
 
 Selbst gehosteter Familien-Essensplaner für genau eine Familie pro Installation. Die Anwendung läuft im privaten Heimnetz, mobile-first, und kommt ohne öffentliche Registrierung aus.
 
-**Stand Iteration 2:** Grundgerüst plus Gerichteverwaltung mit Varianten, Zutaten und Rezeptquelle. Bewertungen, Authentifizierung, Planung und KI folgen später.
+**Stand Iteration 3:** Gerichteverwaltung plus lokale Anmeldung für eine Familie. Der erste Administrator entsteht einmalig über den Einrichtungsassistenten. Bewertungen, Planung und KI folgen später.
 
 ## Voraussetzungen
 
@@ -76,6 +76,43 @@ Stoppen und Datenbankvolume löschen:
 ```sh
 docker compose --env-file .env -f deploy/compose.yaml down --volumes
 ```
+
+## Ersteinrichtung
+
+Beim ersten Start mit leerer Datenbank gibt das Backend einmalig ein Setup-Token ins Log:
+
+```sh
+docker compose --env-file .env -f deploy/compose.yaml logs backend
+```
+
+Die Zeile enthält `SETUP_TOKEN` und den Klartext. Die Oberfläche erklärt denselben Weg. Das Token liegt nicht in der API, nicht im Frontend und nicht in Git. Gespeichert wird nur ein SHA-256-Hash. Es gilt 24 Stunden (`APP_SETUP_TOKEN_TTL`) und kann genau einmal den ersten Administrator anlegen. Danach ist die Einrichtung zu, auch nach einem Neustart.
+
+Ein Neustart vor Ablauf wiederholt das noch gültige Token nicht. Wenn das Log verloren ist oder das Token abgelaufen ist, ohne die Datenbank zu löschen:
+
+```sh
+# In .env nur solange die Einrichtung noch nicht abgeschlossen ist:
+APP_SETUP_ROTATE_TOKEN=true
+```
+
+Backend neu starten, das neue Token aus dem Log kopieren, die Variable wieder auf `false` setzen oder entfernen und erneut starten. Bleibt sie auf `true`, erzeugt jeder weitere Neustart vor Abschluss ein neues Token und entwertet das vorherige. Nach abgeschlossener Einrichtung wird die Variable ignoriert.
+
+Ein abgelaufenes Token wird auch ohne diese Variable beim nächsten Start ersetzt und neu geloggt.
+
+## Benutzer und Rollen
+
+`ADMIN` verwaltet Konten, Rollen, Aktivierung und temporäre Passwörter. `MEMBER` ändert den eigenen Anzeigenamen und das eigene Passwort. Beide dürfen Gerichte und Varianten pflegen. Der letzte aktive Administrator kann nicht deaktiviert oder herabgestuft werden. Ein temporäres Passwort muss bei der nächsten Anmeldung geändert werden. Es gibt keine E-Mail-Zurücksetzung.
+
+## Sitzungen, CSRF und HTTP
+
+Die Anmeldung speichert nichts im `localStorage`. Das Session-Cookie `WAEW_SESSION` ist `HttpOnly` und `SameSite=Lax`. Die Sitzung läuft nach 12 Stunden ab (`APP_SESSION_TIMEOUT`). Zustandsändernde Aufrufe senden das Cookie `XSRF-TOKEN` als Kopfzeile `X-XSRF-TOKEN`.
+
+Im Heimnetz läuft die Anwendung über HTTP. `APP_SESSION_COOKIE_SECURE` bleibt dafür `false`, sonst speichert der Browser das Cookie nicht. Steht später HTTPS vor dem Frontend, die Variable auf `true` setzen. Zusätzliche Authentifizierungscontainer sind nicht nötig.
+
+## Sicherung und Wiederherstellung
+
+Benutzer und der Einrichtungszustand liegen in PostgreSQL, Sitzungen nur im Speicher des Backends. Ein Neustart oder ein Restore verlangt deshalb eine neue Anmeldung, öffnet aber keine zweite Ersteinrichtung, wenn die Sicherung nach der Einrichtung entstanden ist.
+
+Eine Sicherung von vor der Einrichtung enthält den Token-Hash, nicht den Klartext. Fehlt das alte Log, das Token wie oben rotieren. `down --volumes` löscht die Datenbank und startet die Einrichtung von vorn; Gerichte gehen dabei mit verloren.
 
 ## Backend- und Frontend-Build
 

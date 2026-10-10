@@ -48,6 +48,24 @@ class ApplicationIntegrationTest {
     }
 
     @Test
+    void flywayAppliesUserMigration() {
+        Integer applied = jdbcTemplate.queryForObject(
+                "select count(*) from flyway_schema_history where version = '3' and success",
+                Integer.class);
+
+        assertThat(applied).isEqualTo(1);
+    }
+
+    @Test
+    void dishesRequireAuthentication() {
+        var response = restTemplate.getForEntity("/api/dishes", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getHeaders().getContentType().toString()).contains("json");
+        assertThat(response.getBody()).doesNotContain("<html");
+    }
+
+    @Test
     void statusEndpointReturnsPublicPayload() {
         var response = restTemplate.getForEntity("/api/status", StatusResponse.class);
 
