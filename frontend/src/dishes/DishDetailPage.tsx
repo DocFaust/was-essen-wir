@@ -3,15 +3,28 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router';
-import { ApiError, deleteDish, deleteVariant, getDish } from './api';
+import { useViewerId } from '../auth/AuthProvider';
+import {
+  ApiError,
+  clearDishRating,
+  clearVariantRating,
+  deleteDish,
+  deleteVariant,
+  getDish,
+  setDishRating,
+  setVariantRating,
+} from './api';
 import { EFFORT_LABELS, MEAL_TYPE_LABELS, SUITABILITY_LABELS, noticeFrom } from './labels';
+import { StarRating } from './StarRating';
 import type { DishDetail, DishVariant } from './types';
+import { useRatingActions } from './useRatingActions';
 import { ConfirmDialog, ErrorState, LoadingState, Notice } from './ui';
 
 export function DishDetailPage() {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const viewerId = useViewerId();
   const [dish, setDish] = useState<DishDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +32,15 @@ export function DishDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [variantToDelete, setVariantToDelete] = useState<DishVariant | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [seenViewer, setSeenViewer] = useState(viewerId);
+  const ratings = useRatingActions();
+  if (seenViewer !== viewerId) {
+    setSeenViewer(viewerId);
+    setDish(null);
+    setLoading(true);
+    setError(null);
+    setActionError(null);
+  }
 
   useEffect(() => {
     if (!id) {
@@ -42,7 +64,53 @@ export function DishDetailPage() {
         setLoading(false);
       });
     return () => controller.abort();
-  }, [id, attempt]);
+  }, [id, attempt, viewerId]);
+
+  function publishDishRating(stars: number | null) {
+    setDish((current) => (current ? { ...current, myRating: stars } : current));
+  }
+
+  function publishVariantRating(variantId: string, stars: number | null) {
+    setDish((current) =>
+      current
+        ? {
+            ...current,
+            variants: current.variants.map((variant) =>
+              variant.id === variantId ? { ...variant, myRating: stars } : variant,
+            ),
+          }
+        : current,
+    );
+  }
+
+  function rateDish(stars: number | null) {
+    if (!dish) {
+      return;
+    }
+    void ratings.commit(
+      `dish:${dish.id}`,
+      stars,
+      dish.myRating,
+      () => (stars == null ? clearDishRating(dish.id) : setDishRating(dish.id, stars).then(() => undefined)),
+      publishDishRating,
+    );
+  }
+
+  function rateVariant(variant: DishVariant, stars: number | null) {
+    if (!dish) {
+      return;
+    }
+    void ratings.commit(
+      `variant:${variant.id}`,
+      stars,
+      variant.myRating,
+      () =>
+        stars == null
+          ? clearVariantRating(dish.id, variant.id)
+          : setVariantRating(dish.id, variant.id, stars).then(() => undefined),
+      (next) => publishVariantRating(variant.id, next),
+    );
+  }
 
   async function confirmDeleteDish() {
     if (!dish) {
@@ -93,6 +161,15 @@ export function DishDetailPage() {
       <Typography variant="h1" component="h1" sx={{ overflowWrap: 'anywhere' }}>
         {dish.name}
       </Typography>
+      <StarRating
+        label={`Deine Bewertung für ${dish.name}`}
+        value={dish.myRating}
+        busy={ratings.busy[`dish:${dish.id}`] === true}
+        error={ratings.errors[`dish:${dish.id}`] ?? null}
+        onChange={(stars) => rateDish(stars)}
+        onClear={() => rateDish(null)}
+        testId="dish-rating"
+      />
       <Notice message={noticeFrom(location.state)} />
       {actionError ? <ErrorState message={actionError} /> : null}
       <DetailLine label="Beschreibung" value={dish.description} />
@@ -111,8 +188,22 @@ export function DishDetailPage() {
       </Typography>
       {dish.variants.length === 0 ? <Typography color="text.secondary">Noch keine Varianten.</Typography> : null}
       {dish.variants.map((variant) => (
-        <Stack key={variant.id} spacing={1} sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
+        <Stack
+          key={variant.id}
+          spacing={1}
+          data-testid="variant-card"
+          sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 1.5, minWidth: 0 }}
+        >
           <Typography sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{variant.name}</Typography>
+          <StarRating
+            label={`Deine Bewertung für ${variant.name}`}
+            value={variant.myRating}
+            busy={ratings.busy[`variant:${variant.id}`] === true}
+            error={ratings.errors[`variant:${variant.id}`] ?? null}
+            onChange={(stars) => rateVariant(variant, stars)}
+            onClear={() => rateVariant(variant, null)}
+            testId={`variant-rating-${variant.id}`}
+          />
           <DetailLine
             label="Rezeptquelle"
             value={variant.resolved.recipeSource}

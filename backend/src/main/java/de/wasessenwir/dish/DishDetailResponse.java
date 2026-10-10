@@ -17,5 +17,6 @@ public record DishDetailResponse(
         String comments,
         Suitability mealPrep,
         Suitability homeOffice,
+        Integer myRating,
         List<VariantResponse> variants) {
 }

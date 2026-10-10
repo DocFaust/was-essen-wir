@@ -6,9 +6,12 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router';
-import { ApiError, listDishes } from './api';
+import { useViewerId } from '../auth/AuthProvider';
+import { ApiError, clearDishRating, listDishes, setDishRating } from './api';
 import { EFFORT_LABELS, MEAL_TYPE_LABELS, MEAL_TYPES, SUITABILITY_LABELS, noticeFrom } from './labels';
+import { StarRating } from './StarRating';
 import type { DishQuery, DishSummary, Effort, MealType, Suitability } from './types';
+import { useRatingActions } from './useRatingActions';
 import { ErrorState, LoadingState, Notice } from './ui';
 
 const SUITABILITY_FILTERS: Suitability[] = ['SUITABLE', 'UNSUITABLE', 'UNKNOWN'];
@@ -21,11 +24,20 @@ export function DishListPage() {
   const [mealPrep, setMealPrep] = useState('');
   const [homeOffice, setHomeOffice] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const viewerId = useViewerId();
   const [dishes, setDishes] = useState<DishSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState(0);
   const [activeQuery, setActiveQuery] = useState<DishQuery>({});
+  const [seenViewer, setSeenViewer] = useState(viewerId);
+  const ratings = useRatingActions();
+  if (seenViewer !== viewerId) {
+    setSeenViewer(viewerId);
+    setDishes([]);
+    setLoading(true);
+    setError(null);
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -46,7 +58,22 @@ export function DishListPage() {
         setLoading(false);
       });
     return () => controller.abort();
-  }, [activeQuery, requestId]);
+  }, [activeQuery, requestId, viewerId]);
+
+  function publishRating(id: string, stars: number | null) {
+    setDishes((current) => current.map((item) => (item.id === id ? { ...item, myRating: stars } : item)));
+  }
+
+  function rate(dish: DishSummary, stars: number | null) {
+    const key = `dish:${dish.id}`;
+    void ratings.commit(
+      key,
+      stars,
+      dish.myRating,
+      () => (stars == null ? clearDishRating(dish.id) : setDishRating(dish.id, stars).then(() => undefined)),
+      (next) => publishRating(dish.id, next),
+    );
+  }
 
   function search(event: FormEvent) {
     event.preventDefault();
@@ -138,23 +165,38 @@ export function DishListPage() {
       ) : null}
       {!loading && !error
         ? dishes.map((dish) => (
-            <Button
+            <Stack
               key={dish.id}
-              component={RouterLink}
-              to={`/gerichte/${dish.id}`}
-              variant="outlined"
-              fullWidth
-              sx={{ justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal' }}
+              spacing={1}
+              data-testid="dish-card"
+              sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 1.5, minWidth: 0 }}
             >
-              <Stack sx={{ alignItems: 'flex-start', minWidth: 0 }}>
-                <Typography component="span" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
-                  {dish.name}
-                </Typography>
-                <Typography component="span" variant="body2" color="text.secondary">
-                  {subtitle(dish)}
-                </Typography>
-              </Stack>
-            </Button>
+              <StarRating
+                label={`Deine Bewertung für ${dish.name}`}
+                value={dish.myRating}
+                busy={ratings.busy[`dish:${dish.id}`] === true}
+                error={ratings.errors[`dish:${dish.id}`] ?? null}
+                onChange={(stars) => rate(dish, stars)}
+                onClear={() => rate(dish, null)}
+                testId={`list-rating-${dish.id}`}
+              />
+              <Button
+                component={RouterLink}
+                to={`/gerichte/${dish.id}`}
+                variant="outlined"
+                fullWidth
+                sx={{ justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal' }}
+              >
+                <Stack sx={{ alignItems: 'flex-start', minWidth: 0 }}>
+                  <Typography component="span" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
+                    {dish.name}
+                  </Typography>
+                  <Typography component="span" variant="body2" color="text.secondary">
+                    {subtitle(dish)}
+                  </Typography>
+                </Stack>
+              </Button>
+            </Stack>
           ))
         : null}
     </Stack>

@@ -1,8 +1,8 @@
 # Fachkonzept – Was essen wir?
 
-**Version:** 1.4 · **Stand:** 10.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
+**Version:** 1.5 · **Stand:** 10.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
 
-Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung sowie lokale Anmeldung sind umgesetzt. Bewertungen, Vorschläge, Planung und KI folgen später.
+Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung, lokale Anmeldung und persönliche Sternebewertungen sind umgesetzt. Vorschläge, Planung und KI folgen später.
 
 ## 1. Ziel und Abgrenzung
 
@@ -16,7 +16,7 @@ Eine für eine einzelne Familie pro Installation bestimmte, mobil nutzbare Weban
 
 - Eine Familie (Single-Family), mehrere persönliche Benutzerprofile.
 - Alle angemeldeten Mitglieder dürfen Grundgerichte und Varianten anlegen, Stammdaten bearbeiten, Vorschläge starten, Mahlzeiten planen und Abstimmungen initiieren.
-- Jedes Mitglied bewertet Gerichte und Varianten selbst mit 1–5 Sternen; andere Mitglieder dürfen diese Bewertungen ansehen, aber nicht ändern.
+- Jedes Mitglied bewertet Gerichte und Varianten selbst mit 1–5 Sternen. Ändern darf nur die Person selbst, ermittelt aus ihrer angemeldeten Sitzung. Angezeigt wird in der aktuellen Fassung nur die eigene Bewertung. Fremde Bewertungen, Familiendurchschnitt und Bewertungsstatistiken sind noch nicht sichtbar.
 - Eine Administrationsrolle verwaltet Benutzer und grundlegende Einstellungen.
 - Keine öffentliche Selbstregistrierung; Zugriff nur nach Anmeldung.
 - Authentifizierung mit Spring Security, lokaler Benutzerverwaltung und serverseitigen Sessions. Keine Keycloak-, OAuth2- oder separate Authentifizierungsinfrastruktur.
@@ -66,10 +66,14 @@ Ein leeres Textfeld ist nicht gesetzt und wird nicht gespeichert. Deshalb zeigt 
 ## 4. Persönliche Bewertungen
 
 - Genau eine aktuelle Bewertung pro Benutzer und bewertbarem Objekt (Grundgericht oder Variante); Werte 1–5 oder *nicht bewertet*.
-- Bedeutung: 1 = mag ich überhaupt nicht; 2 = ungern; 3 = okay; 4 = gerne; 5 = Lieblingsessen.
+- Bedeutung: 1 = mag ich überhaupt nicht; 2 = esse ich ungern; 3 = ist okay; 4 = esse ich gerne; 5 = Lieblingsessen.
+- *Nicht bewertet* ist ein eigener Zustand und entspricht nicht drei Sternen. Eine Variante ohne eigene Bewertung übernimmt die Sterne des Grundgerichts nicht in der Anzeige.
+- Grundgericht und Variante werden getrennt gespeichert. Beispiel: Pizza 4 Sterne, Pizza Margherita 5 Sterne, Pizza Salami nicht bewertet.
+- Eine spätere Empfehlung darf die Grundgerichtsbewertung für eine unbewertete Variante als schwächeres Signal nutzen. Diese Gewichtung ist noch nicht umgesetzt.
 - Niedrige Bewertungen reduzieren die Empfehlungswahrscheinlichkeit deutlich, schließen aber nicht automatisch aus.
-- Bewertungen werden niemals automatisch aus dem Verhalten verändert.
-- Eigene Bewertungen dürfen direkt per UI oder eindeutiger KI-Anweisung geändert werden.
+- Bewertungen werden niemals automatisch aus dem Verhalten, aus Essensentscheidungen oder durch andere Personen verändert.
+- Eigene Bewertungen dürfen direkt per UI oder später per eindeutiger KI-Anweisung geändert oder entfernt werden.
+- Die Oberfläche und die API liefern ausschließlich die Bewertung der angemeldeten Person. Eine Benutzer-ID lässt sich in der Anfrage nicht frei wählen.
 
 ## 5. Mahlzeiten, Anwesenheit und Planung
 
@@ -187,7 +191,7 @@ Anforderungen an die technische Modellierung: Variantenvererbung mit klarer Übe
 
 ## 15. Noch zu präzisierende Details vor Implementierung
 
-- Exakte Bewertung/Vererbung bei unbewerteten Varianten.
+- Gewichtung einer unbewerteten Variante in der Empfehlung. Fest steht nur: die Oberfläche übernimmt die Sterne des Grundgerichts nicht, und *nicht bewertet* ist nicht drei Sterne.
 - Konkrete Gewichtungen, Wiederholungsfenster und Fairnessregeln des Empfehlungsalgorithmus.
 - Definition und sichere Behandlung von Allergien und harten Ausschlüssen.
 - Abstimmungsfristen, Gleichstand und Benachrichtigungen.

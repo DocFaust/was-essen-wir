@@ -15,5 +15,6 @@ public record VariantResponse(
         String recipeSource,
         SuitabilitySetting mealPrep,
         SuitabilitySetting homeOffice,
-        ResolvedProperties resolved) {
+        ResolvedProperties resolved,
+        Integer myRating) {
 }

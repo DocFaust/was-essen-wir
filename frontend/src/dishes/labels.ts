@@ -25,6 +25,20 @@ export const SUITABILITY_SETTING_LABELS: Record<SuitabilitySetting, string> = {
   UNSUITABLE: 'Nicht geeignet',
 };
 
+export const STAR_MEANINGS: Record<number, string> = {
+  1: 'Mag ich überhaupt nicht',
+  2: 'Esse ich ungern',
+  3: 'Ist okay',
+  4: 'Esse ich gerne',
+  5: 'Lieblingsessen',
+};
+
+export function starLabel(value: number): string {
+  const meaning = STAR_MEANINGS[value];
+  const unit = value === 1 ? 'Stern' : 'Sterne';
+  return meaning ? `${value} ${unit}, ${meaning}` : `${value} ${unit}`;
+}
+
 export const MEAL_TYPES = Object.keys(MEAL_TYPE_LABELS) as MealType[];
 export const EFFORTS = Object.keys(EFFORT_LABELS) as Effort[];
 

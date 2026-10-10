@@ -16,6 +16,7 @@ const dishes: DishSummary[] = [
     mealPrep: 'UNKNOWN',
     homeOffice: 'SUITABLE',
     variantNames: ['Salami'],
+    myRating: null,
   },
 ];
 
