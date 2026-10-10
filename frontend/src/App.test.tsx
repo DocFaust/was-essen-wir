@@ -48,6 +48,9 @@ function problem(detail: string, status: number, code?: string): Response {
 function routeFetch(routes: Record<string, () => Response | Promise<Response>>) {
   return vi.fn<typeof fetch>(async (input) => {
     const url = String(input);
+    if (url.includes('/api/members')) {
+      return jsonResponse([{ id: admin.id, displayName: admin.displayName }]);
+    }
     const match = Object.entries(routes).find(([path]) => url.includes(path));
     if (!match) {
       return problem('Unerwartete Anfrage', 500);

@@ -1,6 +1,7 @@
 package de.wasessenwir.user;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,6 +47,26 @@ public class UserRepository {
     public List<StoredUser> findAll() {
         return jdbc.sql("select * from app_user order by lower(display_name), username_normalized")
                 .query(MAPPER)
+                .list();
+    }
+
+    public List<StoredUser> findActive() {
+        return jdbc.sql("""
+                select * from app_user
+                where active
+                order by lower(display_name), id
+                """)
+                .query(MAPPER)
+                .list();
+    }
+
+    public List<UUID> findActiveIds(Collection<UUID> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql("select id from app_user where active and id in (:ids)")
+                .param("ids", ids)
+                .query((rs, row) -> rs.getObject("id", UUID.class))
                 .list();
     }
 

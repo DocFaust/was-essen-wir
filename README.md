@@ -2,7 +2,7 @@
 
 Selbst gehosteter Familien-Essensplaner für genau eine Familie pro Installation. Die Anwendung läuft im privaten Heimnetz, mobile-first, und kommt ohne öffentliche Registrierung aus.
 
-**Stand Iteration 4:** Gerichteverwaltung, lokale Anmeldung und persönliche Sternebewertungen. Jede angemeldete Person bewertet Gerichte und Varianten mit 1–5 Sternen. Sichtbar ist nur die eigene Bewertung. Planung und KI folgen später.
+**Stand Iteration 5:** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen und regelbasierte Essensvorschläge. Auf der Startseite wählen angemeldete Personen Mahlzeit und Mitessende und erhalten bis zu drei Vorschläge. Sichtbar bleiben nur die eigenen Bewertungen. Planung und KI folgen später.
 
 ## Voraussetzungen
 
@@ -100,9 +100,9 @@ Ein abgelaufenes Token wird auch ohne diese Variable beim nächsten Start ersetz
 
 ## Benutzer und Rollen
 
-`ADMIN` verwaltet Konten, Rollen, Aktivierung und temporäre Passwörter. `MEMBER` ändert den eigenen Anzeigenamen und das eigene Passwort. Beide dürfen Gerichte, Varianten und die eigenen Sternebewertungen pflegen. Der letzte aktive Administrator kann nicht deaktiviert oder herabgestuft werden. Ein temporäres Passwort muss bei der nächsten Anmeldung geändert werden. Es gibt keine E-Mail-Zurücksetzung.
+`ADMIN` verwaltet Konten, Rollen, Aktivierung und temporäre Passwörter. `MEMBER` ändert den eigenen Anzeigenamen und das eigene Passwort. Beide dürfen Gerichte, Varianten und die eigenen Sternebewertungen pflegen und Essensvorschläge starten. Der letzte aktive Administrator kann nicht deaktiviert oder herabgestuft werden. Ein temporäres Passwort muss bei der nächsten Anmeldung geändert werden. Es gibt keine E-Mail-Zurücksetzung.
 
-Bewertungen liegen in PostgreSQL und gelten nur für die angemeldete Person. *Nicht bewertet* ist kein Mittelwert und keine drei Sterne. Die Oberfläche speichert sie nicht im `localStorage`.
+Bewertungen liegen in PostgreSQL und gelten nur für die angemeldete Person. *Nicht bewertet* ist kein Mittelwert und keine drei Sterne. Die Oberfläche speichert sie nicht im `localStorage`. Vorschläge verwenden die Bewertungen der ausgewählten Mitessenden nur serverseitig. Die Formel steht in [`docs/empfehlungslogik.md`](docs/empfehlungslogik.md).
 
 ## Sitzungen, CSRF und HTTP
 

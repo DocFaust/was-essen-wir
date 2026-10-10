@@ -36,3 +36,7 @@ Persönliche Sternebewertungen liegen in einer gemeinsamen Tabelle für Grundger
 ## Laufzeitgrenzen
 
 Im Standard-Compose ist PostgreSQL nicht auf dem Host veröffentlicht. Das Frontend ist der einzige veröffentlichte Dienst und leitet `/api` an das Backend weiter. Actuator bleibt im internen Backend-Netz und liefert keine Konfigurationsdetails. `GET /api/status` und `GET /actuator/health` bleiben ohne Anmeldung erreichbar, damit die bestehende Gesundheitsprüfung funktioniert. Sie enthalten keine Benutzer- oder Token-Daten. Alle Gerichte- und Benutzerendpunkte verlangen eine gültige Sitzung.
+
+## Iteration 5
+
+Essensvorschläge berechnet ein eigener Dienst im Backend: Kandidaten zur Mahlzeit, Score aus den Bewertungen der ausgewählten aktiven Mitglieder, gewichtete Ziehung ohne doppelte Gerichtsfamilie, kurze Begründung. `POST /api/recommendations` verlangt eine Sitzung und CSRF. Die Antwort enthält keine Einzelbewertungen und keinen Score. `GET /api/members` liefert angemeldeten Personen nur Kennung und Anzeigenamen aktiver Mitglieder, damit Mitessende ausgewählt werden können. Bewertungen für die Berechnung lädt eine gebündelte Abfrage. Es gibt keine neue Tabelle: Vorschläge werden nicht gespeichert. Die Formel steht in [`empfehlungslogik.md`](empfehlungslogik.md).

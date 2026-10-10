@@ -3,9 +3,12 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { useAuth } from './auth/AuthProvider';
+import { SuggestForm } from './recommendations/SuggestForm';
 import { useBackendStatus } from './useBackendStatus';
 
 export function HomePage() {
+  const { user } = useAuth();
   const { state, retry } = useBackendStatus();
 
   return (
@@ -15,9 +18,10 @@ export function HomePage() {
           Was essen wir?
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-          Familien-Essensplaner für das private Heimnetz.
+          Drei Vorschläge für die Personen, die mitessen.
         </Typography>
       </header>
+      {user ? <SuggestForm userId={user.id} /> : null}
       <BackendStatus state={state} onRetry={retry} />
     </Stack>
   );

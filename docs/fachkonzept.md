@@ -1,8 +1,8 @@
 # Fachkonzept – Was essen wir?
 
-**Version:** 1.5 · **Stand:** 10.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
+**Version:** 1.6 · **Stand:** 10.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
 
-Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung, lokale Anmeldung und persönliche Sternebewertungen sind umgesetzt. Vorschläge, Planung und KI folgen später.
+Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen und regelbasierte Essensvorschläge sind umgesetzt. Planung und KI folgen später. Die Gewichte der Vorschläge stehen in [`empfehlungslogik.md`](empfehlungslogik.md).
 
 ## 1. Ziel und Abgrenzung
 
@@ -69,8 +69,8 @@ Ein leeres Textfeld ist nicht gesetzt und wird nicht gespeichert. Deshalb zeigt 
 - Bedeutung: 1 = mag ich überhaupt nicht; 2 = esse ich ungern; 3 = ist okay; 4 = esse ich gerne; 5 = Lieblingsessen.
 - *Nicht bewertet* ist ein eigener Zustand und entspricht nicht drei Sternen. Eine Variante ohne eigene Bewertung übernimmt die Sterne des Grundgerichts nicht in der Anzeige.
 - Grundgericht und Variante werden getrennt gespeichert. Beispiel: Pizza 4 Sterne, Pizza Margherita 5 Sterne, Pizza Salami nicht bewertet.
-- Eine spätere Empfehlung darf die Grundgerichtsbewertung für eine unbewertete Variante als schwächeres Signal nutzen. Diese Gewichtung ist noch nicht umgesetzt.
-- Niedrige Bewertungen reduzieren die Empfehlungswahrscheinlichkeit deutlich, schließen aber nicht automatisch aus.
+- Eine spätere Empfehlung darf die Grundgerichtsbewertung für eine unbewertete Variante als schwächeres Signal nutzen. In der aktuellen Empfehlung zählt sie mit dem halben Sternbeitrag und ersetzt keine eigene Variantenbewertung. Die Anzeige übernimmt die Sterne weiterhin nicht.
+- Niedrige Bewertungen reduzieren die Empfehlungswahrscheinlichkeit deutlich, schließen aber nicht automatisch aus. Die konkrete Formel steht in [`empfehlungslogik.md`](empfehlungslogik.md).
 - Bewertungen werden niemals automatisch aus dem Verhalten, aus Essensentscheidungen oder durch andere Personen verändert.
 - Eigene Bewertungen dürfen direkt per UI oder später per eindeutiger KI-Anweisung geändert oder entfernt werden.
 - Die Oberfläche und die API liefern ausschließlich die Bewertung der angemeldeten Person. Eine Benutzer-ID lässt sich in der Anfrage nicht frei wählen.
@@ -94,12 +94,11 @@ Ein leeres Textfeld ist nicht gesetzt und wird nicht gespeichert. Deshalb zeigt 
 6. Gewählte Mahlzeit optional planen und später explizit als gegessen markieren.
 
 ### 6.2 Fairness und Lernen
-- Nicht nur Mittelwert: Eine extrem schlechte Bewertung eines Mitessenden soll stärker zählen als ein einfacher Durchschnitt suggeriert.
-- Wiederholungen derselben Gerichte und Kategorien reduzieren; nicht starr die Top-3 anzeigen.
+- Nicht nur Mittelwert: Eine extrem schlechte Bewertung eines Mitessenden soll stärker zählen als ein einfacher Durchschnitt suggeriert. Die umgesetzte Startformel steht in [`empfehlungslogik.md`](empfehlungslogik.md). Ein-Stern-Bewertungen ziehen ein Gericht unter ein unbewertetes, ohne es hart auszuschließen.
+- Wiederholungen derselben Gerichte und Kategorien reduzieren; nicht starr die Top-3 anzeigen. Die aktuelle Ziehung vermeidet doppelte Gerichtsfamilien und würfelt gewichtet. Eine Vermeidung anhand der Kochhistorie folgt erst mit der Historie.
 - Ein nicht ausgewählter Vorschlag ist **keine** ausdrückliche Ablehnung.
-- Wiederholt gewählte Gerichte können einen kleinen Bonus erhalten; ausdrückliche wiederholte Ablehnungen einen kleinen, zeitlich abklingenden Malus.
+- Wiederholt gewählte Gerichte können einen kleinen Bonus erhalten; ausdrückliche wiederholte Ablehnungen einen kleinen, zeitlich abklingenden Malus. Beides ist noch nicht umgesetzt.
 - Das System verändert niemals Sternebewertungen automatisch. Lernsignale müssen nachvollziehbar und bei Bedarf zurücksetzbar sein.
-- Gewichtungen sind Startparameter und werden erst nach Test mit realistischen Beispieldaten festgelegt.
 
 ### 6.3 Neue Gerichte
 - Gelegentlich darf die KI neue, als *neu* gekennzeichnete Gerichte empfehlen, passend zu bekannten Vorlieben und Aufwand.
@@ -191,8 +190,7 @@ Anforderungen an die technische Modellierung: Variantenvererbung mit klarer Übe
 
 ## 15. Noch zu präzisierende Details vor Implementierung
 
-- Gewichtung einer unbewerteten Variante in der Empfehlung. Fest steht nur: die Oberfläche übernimmt die Sterne des Grundgerichts nicht, und *nicht bewertet* ist nicht drei Sterne.
-- Konkrete Gewichtungen, Wiederholungsfenster und Fairnessregeln des Empfehlungsalgorithmus.
+- Wiederholungsfenster anhand der Kochhistorie. Die aktuelle Ziehung kennt noch keine vergangenen Mahlzeiten.
 - Definition und sichere Behandlung von Allergien und harten Ausschlüssen.
 - Abstimmungsfristen, Gleichstand und Benachrichtigungen.
 - Sichtbarkeit/Änderungsrechte für persönliche Regeln und Kommentare.

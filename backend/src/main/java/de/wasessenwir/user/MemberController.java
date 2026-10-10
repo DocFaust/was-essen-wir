@@ -1,0 +1,22 @@
+package de.wasessenwir.user;
+
+import java.util.List;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/members")
+public class MemberController {
+
+    private final UserService users;
+
+    public MemberController(UserService users) {
+        this.users = users;
+    }
+
+    @GetMapping
+    List<MemberResponse> list() {
+        return users.activeMembers();
+    }
+}
