@@ -2,7 +2,7 @@
 
 Selbst gehosteter Familien-Essensplaner für genau eine Familie pro Installation. Die Anwendung läuft im privaten Heimnetz, mobile-first, und kommt ohne öffentliche Registrierung aus.
 
-**Stand Iteration 1:** lauffähiges Grundgerüst mit Statusseite, PostgreSQL, Tests und CI. Gerichte, Bewertungen, Authentifizierung und KI folgen später.
+**Stand Iteration 2:** Grundgerüst plus Gerichteverwaltung mit Varianten, Zutaten und Rezeptquelle. Bewertungen, Authentifizierung, Planung und KI folgen später.
 
 ## Voraussetzungen
 
@@ -150,4 +150,5 @@ Image-Builds laden Gradle und npm innerhalb der Container. Ein TLS-Interceptor, 
 - [`docs/fachkonzept.md`](docs/fachkonzept.md)
 - [`docs/architektur.md`](docs/architektur.md)
 - [`docs/roadmap.md`](docs/roadmap.md)
+- [`docs/datenmodell.md`](docs/datenmodell.md)
 - [`AGENTS.md`](AGENTS.md)
