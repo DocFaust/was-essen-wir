@@ -1,5 +1,6 @@
 package de.wasessenwir.user;
 
+import de.wasessenwir.security.CurrentUser;
 import de.wasessenwir.security.UserSessions;
 import de.wasessenwir.web.ApiException;
 import java.time.Clock;
@@ -29,6 +30,13 @@ public class UserService {
 
     public List<UserResponse> list() {
         return users.findAll().stream().map(UserResponse::from).toList();
+    }
+
+    public List<MemberResponse> activeMembers() {
+        CurrentUser.requireId();
+        return users.findActive().stream()
+                .map(user -> new MemberResponse(user.id(), user.displayName()))
+                .toList();
     }
 
     public UserResponse current(UUID id) {

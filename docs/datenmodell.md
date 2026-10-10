@@ -1,6 +1,6 @@
 # Datenmodell
 
-Iteration 4 persistiert persönliche Bewertungen. Planung, Historie, Vorschläge, Abstimmungen und Audit bleiben Kandidaten für spätere Iterationen: `PreferenceRule`, `MealPlan`, `MealHistory`, `MealParticipant`, `PreparedPortion`, `SuggestionSession`, `DecisionEvent`, `Vote`, `AuditEvent`.
+Iteration 4 persistiert persönliche Bewertungen. Iteration 5 berechnet Vorschläge daraus, speichert sie aber nicht. Planung, Historie, Abstimmungen und Audit bleiben Kandidaten für spätere Iterationen: `PreferenceRule`, `MealPlan`, `MealHistory`, `MealParticipant`, `PreparedPortion`, `SuggestionSession`, `DecisionEvent`, `Vote`, `AuditEvent`.
 
 `PreparedPortion` erhält später Empfänger, Verzehrdatum, Status und eine optionale Referenz auf den ursprünglichen Kochvorgang. Keine Lagerbestandsverwaltung.
 
@@ -120,5 +120,15 @@ Eigene Bewertungen, jeweils nur für die Sitzung:
 | `DELETE` | `/api/dishes/{id}/variants/{variantId}/rating` | `204` |
 
 Der Körper enthält nur `stars`. Eine mitgesendete Benutzer-ID wird nicht verwendet. `0` und `6` antworten mit `400`. Unbekannte Gerichte oder Varianten antworten mit `404`.
+
+Aktive Mitglieder für die Mitessendenauswahl, für jede angemeldete Person:
+
+| Methode | Pfad | Erfolg |
+| --- | --- | --- |
+| `GET` | `/api/members` | `{ "id", "displayName" }` je aktivem Mitglied, ohne Benutzername, Rolle oder Passwort |
+
+Essensvorschläge, `POST /api/recommendations`, für jede angemeldete Person. Der Körper enthält `mealType`, `dinerIds`, optional `preferSimple`, `preferHomeOffice`, `preferMealPrep`, `excludedDishIds` und `seed`. `excludedDishIds` sind Grundgerichte und schließen die ganze Gerichtsfamilie aus. `seed` macht die Ziehung wiederholbar; ohne Seed würfelt das Backend.
+
+Die Antwort enthält `suggestions` mit höchstens drei Einträgen und optional `explanation`. Jeder Vorschlag hat `dishId`, `variantId`, `name`, `dishName`, `variantName`, `reason`, `effort`, `mealPrep` und `homeOffice`. Keine Sterne, keine Benutzerkennungen und kein Score. Unbekannte oder inaktive Mitessende antworten mit `400`. Eine fehlende Mahlzeit ebenfalls. Weniger als drei passende Familien liefern weniger Vorschläge und einen Erklärungssatz.
 
 Eignungswerte eines Grundgerichts sind `UNKNOWN`, `SUITABLE` und `UNSUITABLE`. Eine Variante sendet `INHERIT`, `SUITABLE` oder `UNSUITABLE`. In `resolved` steht der wirksame Wert und ob er übernommen wurde. Die Oberfläche zeigt `resolved` an und schickt die gespeicherten Felder beim Speichern zurück.

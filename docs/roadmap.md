@@ -6,9 +6,9 @@ Jede Iteration ist für sich testbar. Fachliche Anforderungen stehen in [`fachko
 2. **Gerichteverwaltung – abgeschlossen.** Grundgerichte und Varianten anlegen, anzeigen, suchen, filtern, bearbeiten und löschen. Dazu Mahlzeitentypen, Kategorien, Aufwand, Zutaten ohne Mengen, Rezepttext, Rezeptlink, Rezeptquelle, Kommentare und Eignungsmerkmale.
 3. **Familie und Login – abgeschlossen.** Spring Security, lokale Benutzer, serverseitige Sessions, einmaliger Einrichtungsassistent und Administrationsrolle. Keine öffentliche Registrierung.
 4. **Persönliche Bewertungen – abgeschlossen.** Jede angemeldete Person bewertet Grundgerichte und Varianten unabhängig mit 1–5 Sternen oder lässt sie unbewertet. Gespeichert und angezeigt wird nur die eigene Bewertung. Durchschnitt, fremde Bewertungen und Empfehlungen folgen später.
-5. **Regelbasierte Essensvorschläge.** Mahlzeit, Mitessende und nachvollziehbarer Algorithmus ohne KI.
+5. **Regelbasierte Essensvorschläge – abgeschlossen.** Mahlzeit, Mitessende und bis zu drei regelbasierte Vorschläge ohne KI. Persönliche Bewertungen beeinflussen die Ziehung serverseitig und bleiben in der Antwort verborgen. Historie, Planung und KI folgen später.
 6. **Historie und Planung einschließlich Meal Prep.** Wochenkalender, geplant gegenüber tatsächlich gegessen, gezieltes Vorbereiten und zusätzliche Portionen, Homeoffice-Kontext.
 7. **KI-Integration.** Natürlichsprachliche Wünsche, kontrollierte Schreibaktionen und gelegentliche neue Gerichte über eine austauschbare Provider-Abstraktion. Kernfunktionen bleiben ohne LLM nutzbar.
 8. **Familienabstimmung und Lernen.** Optionale Abstimmungen und schwache lernende Signale.
 
-Bewertungsvererbung, Empfehlungsgewichte, Allergien, Abstimmungsfristen und Aufbewahrung bleiben offene Punkte im Fachkonzept, bis die jeweilige Iteration sie festlegt.
+Allergien, Abstimmungsfristen und Aufbewahrung bleiben offene Punkte im Fachkonzept, bis die jeweilige Iteration sie festlegt. Die Gewichte der regelbasierten Vorschläge stehen in [`empfehlungslogik.md`](empfehlungslogik.md).
