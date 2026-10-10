@@ -2,7 +2,7 @@ name: was-essen-wir
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-wasessenwir}
       POSTGRES_USER: ${POSTGRES_USER:-wasessenwir}
