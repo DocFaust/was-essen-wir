@@ -61,12 +61,15 @@ public class SecurityConfig {
             UserRepository users,
             UserSessions sessions,
             SecurityContextRepository securityContextRepository,
-            CsrfTokenRepository csrfTokenRepository)
+            CsrfTokenRepository csrfTokenRepository,
+            RememberMeService rememberMe,
+            AuthenticatedSession authenticatedSession)
             throws Exception {
         CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
         requestHandler.setCsrfRequestAttributeName(null);
-        ActiveUserFilter activeUserFilter = new ActiveUserFilter(users, sessions);
+        ActiveUserFilter activeUserFilter = new ActiveUserFilter(users, sessions, rememberMe);
         PasswordChangeFilter passwordChangeFilter = new PasswordChangeFilter();
+        RememberMeFilter rememberMeFilter = new RememberMeFilter(rememberMe, authenticatedSession);
 
         http.csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository).csrfTokenRequestHandler(requestHandler))
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))
@@ -94,7 +97,8 @@ public class SecurityConfig {
                         .denyAll())
                 .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
                 .addFilterAfter(activeUserFilter, CsrfCookieFilter.class)
-                .addFilterAfter(passwordChangeFilter, ActiveUserFilter.class);
+                .addFilterAfter(rememberMeFilter, ActiveUserFilter.class)
+                .addFilterAfter(passwordChangeFilter, RememberMeFilter.class);
         return http.build();
     }
 
