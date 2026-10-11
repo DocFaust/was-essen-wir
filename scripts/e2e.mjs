@@ -13,6 +13,8 @@ const env = {
   POSTGRES_PASSWORD: randomBytes(18).toString('hex'),
   APP_PORT: port,
   E2E_BASE_URL: `http://127.0.0.1:${port}`,
+  AI_ENABLED: 'true',
+  AI_PROVIDER: 'fixture',
 };
 
 const compose = ['compose', '--project-name', project, '-f', 'deploy/compose.yaml'];

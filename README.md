@@ -2,7 +2,7 @@
 
 Selbst gehosteter Familien-Essensplaner für genau eine Familie pro Installation. Die Anwendung läuft im privaten Heimnetz, mobile-first, und kommt ohne öffentliche Registrierung aus.
 
-**Stand Iteration 6:** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Wochenplan und Essenshistorie. Kürzlich gegessene und bereits geplante Gerichte beeinflussen neue Vorschläge. Sichtbar bleiben nur die eigenen Bewertungen. KI folgt später.
+**Stand Iteration 7:** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Wochenplan und Essenshistorie. Kürzlich gegessene und bereits geplante Gerichte beeinflussen neue Vorschläge. Sichtbar bleiben nur die eigenen Bewertungen. Ein optionaler Essensassistent übersetzt natürlichsprachliche Wünsche; die Auswahl bleibt regelbasiert. Ohne `AI_ENABLED=true` gibt es keine KI-Verbindung. Der Ablauf steht in [`docs/ki-assistent.md`](docs/ki-assistent.md).
 
 ## Voraussetzungen
 
@@ -29,6 +29,10 @@ In `.env` ein eigenes `POSTGRES_PASSWORD` setzen. Die Datei bleibt lokal und ist
 | `TZ` | Zeitzone der Container, Standard `Europe/Berlin` |
 | `APP_TIME_ZONE` | Kalendertag des Backends für „heute“, Standard `Europe/Berlin` |
 | `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Backend auf dem Host, außerhalb von Compose |
+| `AI_ENABLED` | Essensassistent, Standard `false` |
+| `AI_PROVIDER` | `ollama` oder `openai`, Standard `ollama` |
+| `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_TIMEOUT` | Ollama im LAN, Standard `http://127.0.0.1:11434`, `qwen3.5:9b`, `30s` |
+| `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT` | nur im Backend, Standardmodell `gpt-4.1-mini` |
 
 ## Lokaler Entwicklungsstart
 

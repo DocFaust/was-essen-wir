@@ -152,6 +152,8 @@ Essensvorschläge, `POST /api/recommendations`, für jede angemeldete Person. De
 
 Die Antwort enthält `suggestions` mit höchstens drei Einträgen und optional `explanation`. Jeder Vorschlag hat `dishId`, `variantId`, `name`, `dishName`, `variantName`, `reason`, `effort`, `mealPrep` und `homeOffice`. Keine Sterne, keine Benutzerkennungen und kein Score. Unbekannte oder inaktive Mitessende antworten mit `400`. Eine fehlende Mahlzeit ebenfalls. Weniger als drei passende Familien liefern weniger Vorschläge und einen Erklärungssatz. Optional kann `referenceDate` als `YYYY-MM-DD` mitgeschickt werden. Ohne dieses Feld gilt der lokale Kalendertag der Installation.
 
+Essensassistent, für jede angemeldete Person. `GET /api/ai/status` liefert `{ "enabled", "provider" }`. `provider` ist `null`, wenn der Assistent aus ist. `POST /api/ai/recommendations` enthält `message` und optional `seed`. Die Antwort enthält `reply`, `clarificationQuestion`, `criteria`, `suggestions` und `explanation`. `suggestions` haben dieselbe Form wie bei `/api/recommendations`. `criteria` nennt die tatsächlich verwendeten Filter, aufgelösten Mitessenden und Kataloghinweise. Es werden keine Sterne und keine fremden Bewertungen zurückgegeben. Fehlercodes und die Prompt-Grenze stehen in [`ki-assistent.md`](ki-assistent.md).
+
 Planung und Historie, für jede angemeldete Person. Der Schreibkörper enthält `mealDate`, `mealType`, `dishId`, optionales `variantId`, `dinerIds` und optionalen `comment`. Die Erstellerin kommt aus der Sitzung.
 
 | Methode | Pfad | Erfolg |

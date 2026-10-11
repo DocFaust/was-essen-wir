@@ -1,8 +1,8 @@
 # Fachkonzept – Was essen wir?
 
-**Version:** 1.7 · **Stand:** 10.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
+**Version:** 1.8 · **Stand:** 11.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
 
-Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Planung und Essenshistorie sind umgesetzt. KI folgt später. Die Gewichte der Vorschläge stehen in [`empfehlungslogik.md`](empfehlungslogik.md).
+Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Planung, Essenshistorie und ein optionaler Essensassistent sind umgesetzt. Der Assistent übersetzt natürlichsprachliche Wünsche; die Auswahl bleibt regelbasiert. Schreibaktionen der KI folgen später. Die Gewichte der Vorschläge stehen in [`empfehlungslogik.md`](empfehlungslogik.md), der Assistent in [`ki-assistent.md`](ki-assistent.md).
 
 ## 1. Ziel und Abgrenzung
 
@@ -122,15 +122,16 @@ Ein leeres Textfeld ist nicht gesetzt und wird nicht gespeichert. Deshalb zeigt 
 
 ## 9. KI-Integration und Schreibrechte
 
-- KI direkt in bestehende Oberflächen integriert; kein Chat-Zwang.
-- OpenAI API als Cloud-LLM; API-Schlüssel ausschließlich serverseitig. Modell und Provider über Konfiguration austauschbar halten.
-- KI interpretiert natürliche Sprache und ruft nur explizit freigegebene Backend-Aktionen auf; keine direkte Datenbankverbindung.
+Umgesetzt ist die Interpretation. Der Assistent sitzt in der Vorschlagsansicht und ist kein Chat. Ollama im Heimnetz und die OpenAI-Chat-Completions-API sind austauschbar; der Schlüssel bleibt serverseitig. Die KI liefert nur strukturierte Kriterien. Namen, Katalog und die Auswahl löst das Backend. An den Provider gehen die Anfrage, das heutige Datum und die erlaubten Kriterien, keine Bewertungen, keine Historie und kein Katalog. Details stehen in [`ki-assistent.md`](ki-assistent.md).
+
+Noch nicht umgesetzt und weiterhin nur mit ausdrücklicher Freigabe gedacht:
+
 - **Direkt ausführbar:** eindeutiges neues Gericht, eigene Bewertung, einfache Zutaten-/Kommentarergänzung, eindeutige persönliche Regel.
 - **Bestätigung erforderlich:** Löschen, Zusammenführen, größere Massenänderungen, Änderungen gemeinsamer Regeln, mehrdeutige oder folgenschwere Aktionen.
 - **Unzulässig:** Bewertungen anderer Personen ohne deren eigene authentifizierte Aktion ändern.
 - Änderungen protokollieren; für einfache Aktionen möglichst Undo bereitstellen.
-- KI-Ausfälle dürfen klassische Gerichteverwaltung und algorithmische Vorschläge nicht blockieren.
-- Sparsame Datenübertragung: nur erforderliche Gerichtsdaten, Bewertungen und Regeln an die API senden; keine unnötigen personenbezogenen Informationen.
+
+KI-Ausfälle dürfen die Gerichteverwaltung und die algorithmischen Vorschläge nicht blockieren. Bei deaktiviertem Assistenten startet die Anwendung ohne Provider.
 
 ## 10. Hauptansichten
 
@@ -167,7 +168,7 @@ Anforderungen an die technische Modellierung: Variantenvererbung mit klarer Übe
 
 **MVP:** Login/Profile, Gerichte und Varianten, Bewertungen, Mahlzeitentypen, Aufwand, Zutaten, Anwesenheit, Verwendungskontexte (Meal Prep/Homeoffice), regelbasierte drei Vorschläge, Auswahl, Historie; mobile-first umgesetzt.
 
-**Ausbaustufe 2:** OpenAI-Integration, natürlichsprachliche Eingaben, kontrollierte Schreibaktionen, Familien-/Personenregeln, gelegentliche neue Ideen.
+**Ausbaustufe 2:** Natürlichsprachliche Eingaben über Ollama oder OpenAI sind umgesetzt. Offen bleiben kontrollierte Schreibaktionen, Familien-/Personenregeln und gelegentliche neue Ideen.
 
 **Ausbaustufe 3:** Optionale Abstimmungen, automatische Wochenplanung, behutsames Lernen und verfeinerte Erklärbarkeit. Ein einfacher Wochenplan und die Historie gehören bereits zum MVP. Die Reihenfolge kann nach MVP-Tests angepasst werden.
 
@@ -178,7 +179,7 @@ Anforderungen an die technische Modellierung: Variantenvererbung mit klarer Übe
 - Die Auswahl der Mitessenden beeinflusst die Vorschläge; Bewertungen Abwesender fließen nicht ein.
 - Ein-Stern-Bewertungen senken die Priorität, schließen nicht pauschal aus.
 - Die Anwendung zeigt auch ohne KI-Verbindung Vorschläge aus vorhandenen Gerichten.
-- Eine KI kann eine eigene Bewertung auf eindeutige Anweisung ändern, aber keine fremde Bewertung.
+- Der Essensassistent kann eine Anfrage in Mahlzeit, Datum, Mitessende und Katalogwünsche übersetzen. Die Gerichte kommen aus der Sammlung. Eine eigene Bewertung ändert er nicht.
 - Ein ungeplanter Tag im Kalender ist gültig und löst keine Fehlermeldung aus.
 - Die Kochhistorie wird nur durch Bestätigung einer tatsächlich gegessenen Mahlzeit ergänzt.
 - Neue KI-Ideen sind klar gekennzeichnet und werden nicht ohne Übernahme gespeichert.
