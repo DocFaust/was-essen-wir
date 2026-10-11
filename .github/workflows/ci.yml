@@ -30,9 +30,17 @@ jobs:
       - name: Gradle-Cache einrichten
         uses: gradle/actions/setup-gradle@v6.4.0
 
-      - name: Unit- und Integrationstests
+      - name: Tests, JaCoCo-Report und Coverage-Prüfung
         working-directory: backend
-        run: chmod +x gradlew && ./gradlew test --no-daemon
+        run: chmod +x gradlew && ./gradlew check --no-daemon
+
+      - name: JaCoCo-HTML-Report hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: backend-jacoco-html
+          path: backend/build/reports/jacoco/test/html
+          if-no-files-found: ignore
 
   frontend:
     name: Frontend
@@ -61,9 +69,17 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
-      - name: Vitest
+      - name: Vitest mit Coverage-Prüfung
         working-directory: frontend
-        run: npm test
+        run: npm run test:coverage
+
+      - name: Vitest-HTML-Report hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: frontend-coverage-html
+          path: frontend/coverage
+          if-no-files-found: ignore
 
       - name: Production-Build
         working-directory: frontend

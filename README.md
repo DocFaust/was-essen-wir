@@ -146,7 +146,8 @@ Backend, Unit- und Integrationstests. Die Integrationstests starten PostgreSQL p
 
 ```sh
 cd backend
-./gradlew test
+./gradlew test jacocoTestReport
+./gradlew check
 ```
 
 Frontend:
@@ -154,9 +155,12 @@ Frontend:
 ```sh
 cd frontend
 npm test
+npm run test:coverage
 npm run typecheck
 npm run lint
 ```
+
+`npm run test:coverage` und `./gradlew check` prüfen zusätzlich verbindliche Mindestgrenzen. Berichtspfade, Ausschlüsse und die gemessenen Werte stehen in [`docs/test-coverage.md`](docs/test-coverage.md).
 
 ## E2E-Tests
 
@@ -173,8 +177,8 @@ npm run test:e2e
 
 `.github/workflows/ci.yml` läuft bei Push auf `main` und bei Pull Requests:
 
-- Backend: Gradle-Build über `test` (Unit- und Integrationstests mit Testcontainers)
-- Frontend: `npm ci`, TypeScript, Lint, Vitest, Production-Build
+- Backend: `./gradlew check` (Unit- und Integrationstests mit Testcontainers, JaCoCo-Report und Coverage-Grenze). Der HTML-Report wird als Artifact hochgeladen, auch wenn die Grenze fehlschlägt.
+- Frontend: `npm ci`, TypeScript, Lint, Vitest mit Coverage-Grenze, Production-Build. Der Coverage-Report wird ebenfalls als Artifact hochgeladen.
 - E2E: Compose-Stack, Playwright, Screenshots und Traces bei Fehlern
 - Compose-Konfiguration
 - Nativer Lauf auf `ubuntu-24.04-arm`: Image-Build und Abruf von `/api/status`
@@ -194,5 +198,6 @@ Image-Builds laden Gradle und npm innerhalb der Container. Ein TLS-Interceptor, 
 - [`docs/fachkonzept.md`](docs/fachkonzept.md)
 - [`docs/architektur.md`](docs/architektur.md)
 - [`docs/roadmap.md`](docs/roadmap.md)
+- [`docs/test-coverage.md`](docs/test-coverage.md)
 - [`docs/datenmodell.md`](docs/datenmodell.md)
 - [`AGENTS.md`](AGENTS.md)
