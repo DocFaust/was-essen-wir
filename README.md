@@ -2,7 +2,7 @@
 
 Selbst gehosteter Familien-Essensplaner für genau eine Familie pro Installation. Die Anwendung läuft im privaten Heimnetz, mobile-first, und kommt ohne öffentliche Registrierung aus.
 
-**Stand Iteration 5:** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen und regelbasierte Essensvorschläge. Auf der Startseite wählen angemeldete Personen Mahlzeit und Mitessende und erhalten bis zu drei Vorschläge. Sichtbar bleiben nur die eigenen Bewertungen. Planung und KI folgen später.
+**Stand Iteration 6:** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Wochenplan und Essenshistorie. Kürzlich gegessene und bereits geplante Gerichte beeinflussen neue Vorschläge. Sichtbar bleiben nur die eigenen Bewertungen. KI folgt später.
 
 ## Voraussetzungen
 
@@ -27,6 +27,7 @@ In `.env` ein eigenes `POSTGRES_PASSWORD` setzen. Die Datei bleibt lokal und ist
 | `APP_PORT` | Host-Port des Frontends, Standard `8080` |
 | `POSTGRES_PORT` | Host-Port nur im Entwicklungs-Override, Standard `5432` |
 | `TZ` | Zeitzone der Container, Standard `Europe/Berlin` |
+| `APP_TIME_ZONE` | Kalendertag des Backends für „heute“, Standard `Europe/Berlin` |
 | `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Backend auf dem Host, außerhalb von Compose |
 
 ## Lokaler Entwicklungsstart

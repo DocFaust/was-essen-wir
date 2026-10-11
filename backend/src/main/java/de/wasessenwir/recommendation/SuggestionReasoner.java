@@ -14,10 +14,20 @@ public final class SuggestionReasoner {
     static final String MEAL_PREP = "Lässt sich gut vorbereiten.";
     static final String EASY_VARIETY = "Eine abwechslungsreiche Alternative mit geringem Aufwand.";
     static final String VARIETY = "Eine abwechslungsreiche Alternative aus der Sammlung.";
+    public static final String RECENT = "Kürzlich gegessen und deshalb seltener vorgeschlagen.";
+    public static final String PLANNED_SOON = "Schon für die nächsten Tage eingeplant.";
 
     private SuggestionReasoner() {}
 
     public static String reason(ScoredCandidate scored, RecommendationPreferences preferences) {
+        double recency = RecommendationScorer.factor(scored, "recency");
+        if (recency < 0) {
+            return RECENT;
+        }
+        double planned = RecommendationScorer.factor(scored, "planned");
+        if (planned < 0) {
+            return PLANNED_SOON;
+        }
         RatingSummary ratings = scored.ratings();
         Candidate candidate = scored.candidate();
         if (!ratings.anySignal()) {

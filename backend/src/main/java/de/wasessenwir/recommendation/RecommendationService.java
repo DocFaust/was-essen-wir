@@ -1,8 +1,12 @@
 package de.wasessenwir.recommendation;
 
 import de.wasessenwir.dish.InvalidRequestException;
+import de.wasessenwir.meal.MealEventRepository;
+import de.wasessenwir.meal.MealOccurrence;
 import de.wasessenwir.security.CurrentUser;
 import de.wasessenwir.user.UserRepository;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
@@ -19,11 +23,19 @@ public class RecommendationService {
     private static final int MAX_EXCLUSIONS = 100;
 
     private final RecommendationRepository repository;
+    private final MealEventRepository meals;
     private final UserRepository users;
+    private final Clock clock;
 
-    public RecommendationService(RecommendationRepository repository, UserRepository users) {
+    public RecommendationService(
+            RecommendationRepository repository,
+            MealEventRepository meals,
+            UserRepository users,
+            Clock clock) {
         this.repository = repository;
+        this.meals = meals;
         this.users = users;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -38,7 +50,10 @@ public class RecommendationService {
                 Boolean.TRUE.equals(request.preferSimple()),
                 Boolean.TRUE.equals(request.preferHomeOffice()),
                 Boolean.TRUE.equals(request.preferMealPrep()));
+        LocalDate referenceDate = referenceDate(request.referenceDate());
         RandomGenerator random = request.seed() == null ? new Random() : new Random(request.seed());
+        List<MealOccurrence> occurrences = meals.findOccurrences(referenceDate);
+        RepetitionIndex repetition = new RepetitionIndex(referenceDate, occurrences);
 
         List<RecommendationRepository.DishRow> dishes = repository.findDishes(request.mealType().name());
         List<Candidate> candidates;
@@ -53,7 +68,8 @@ public class RecommendationService {
             List<UUID> variantIds = variants.stream().map(RecommendationRepository.VariantRow::id).toList();
             ratings = RatingLookup.from(repository.findRatings(dinerIds, dishIds, variantIds));
         }
-        EngineResult result = RecommendationEngine.recommend(candidates, ratings, dinerIds, preferences, excluded, random);
+        EngineResult result = RecommendationEngine.recommend(
+                candidates, ratings, dinerIds, preferences, excluded, random, repetition);
         return new RecommendationResponse(
                 result.suggestions().stream().map(RecommendationService::toResponse).toList(),
                 result.explanation());
@@ -77,6 +93,16 @@ public class RecommendationService {
             throw new InvalidRequestException("Nur aktive Familienmitglieder können mitessen.");
         }
         return List.copyOf(unique);
+    }
+
+    private LocalDate referenceDate(LocalDate requested) {
+        if (requested == null) {
+            return LocalDate.now(clock);
+        }
+        if (requested.isBefore(LocalDate.of(2000, 1, 1)) || requested.isAfter(LocalDate.of(2100, 12, 31))) {
+            throw new InvalidRequestException("Das Referenzdatum liegt außerhalb des zulässigen Bereichs.");
+        }
+        return requested;
     }
 
     private static Set<UUID> excluded(List<UUID> dishIds) {

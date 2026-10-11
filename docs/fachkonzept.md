@@ -1,8 +1,8 @@
 # Fachkonzept – Was essen wir?
 
-**Version:** 1.6 · **Stand:** 10.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
+**Version:** 1.7 · **Stand:** 10.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
 
-Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen und regelbasierte Essensvorschläge sind umgesetzt. Planung und KI folgen später. Die Gewichte der Vorschläge stehen in [`empfehlungslogik.md`](empfehlungslogik.md).
+Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Planung und Essenshistorie sind umgesetzt. KI folgt später. Die Gewichte der Vorschläge stehen in [`empfehlungslogik.md`](empfehlungslogik.md).
 
 ## 1. Ziel und Abgrenzung
 
@@ -42,14 +42,11 @@ Eine für eine einzelne Familie pro Installation bestimmte, mobil nutzbare Weban
 - Ein Gericht kann gleichzeitig für beide Kontexte geeignet sein; Varianten dürfen eine abweichende Eignung haben.
 - **Nicht festgelegt** und **ausdrücklich nicht geeignet** sind verschiedene Angaben. Nur eine gesetzte Angabe geht in Filter und spätere Vorschläge ein.
 
-### 3.2 Meal-Prep-Planung (verbindlich)
+### 3.2 Meal-Prep-Planung
 
-Zwei gleichberechtigte Abläufe werden unterstützt:
+Eine Mahlzeit für ausgewählte Mitessende und einen bestimmten Tag kann geplant oder direkt als gegessen erfasst werden. Eine einzelne Person kann dabei die einzige Mitessende sein.
 
-1. **Gezielt vorbereiten:** Eine eigenständige Mahlzeit für eine bestimmte Person und einen zukünftigen Verzehrtag planen.
-2. **Zusätzliche Portion:** Beim Planen oder Erfassen eines gemeinsamen Kochvorgangs eine oder mehrere Portionen für spätere Mahlzeiten vorsehen.
-
-Eine vorbereitete Portion referenziert optional den ursprünglichen Kochvorgang, hat eine Zielperson, ein geplantes Verzehrdatum und einen Status (geplant, vorbereitet, verzehrt oder verworfen). Einfache Portionsanzahl ist zulässig, jedoch keine Zutatenmengen, Lager- oder Vorratsverwaltung. Optional kann markiert werden, ob ein Gericht kalt essbar oder aufzuwärmen ist; eine nicht gepflegte Angabe bleibt unbekannt. Dass etwas vorbereitet wurde, bedeutet nicht automatisch, dass es gegessen wurde.
+Das zusätzliche Portionsmodell ist noch nicht umgesetzt und bleibt ein späterer Schritt: Eine vorbereitete Portion referenziert optional den ursprünglichen Kochvorgang, hat eine Zielperson, ein geplantes Verzehrdatum und einen Status (geplant, vorbereitet, verzehrt oder verworfen). Einfache Portionsanzahl ist zulässig, jedoch keine Zutatenmengen, Lager- oder Vorratsverwaltung. Optional kann markiert werden, ob ein Gericht kalt essbar oder aufzuwärmen ist; eine nicht gepflegte Angabe bleibt unbekannt. Dass etwas vorbereitet wurde, bedeutet nicht automatisch, dass es gegessen wurde.
 
 ### 3.3 Vererbung von Varianten
 
@@ -79,9 +76,11 @@ Ein leeres Textfeld ist nicht gesetzt und wird nicht gespeichert. Deshalb zeigt 
 
 - Mahlzeitentypen: Frühstück, Mittagessen, Abendessen, Snack.
 - Bei einer Anfrage werden die tatsächlich Mitessenden ausgewählt; ihre Bewertungen und persönlichen Regeln sind relevant. Die zuletzt verwendete Auswahl kann als Komfortvorgabe dienen.
-- Kein täglicher Planungszwang. Ein optionaler Wochenkalender erlaubt einzelne Einträge für beliebige Tage/Mahlzeiten.
-- Status unterscheiden: vorgeschlagen, geplant, tatsächlich gegessen. Planänderungen bleiben möglich.
-- Kochhistorie erfasst Datum, Mahlzeitentyp, Grundgericht, gegebenenfalls Varianten und Teilnehmende. Geplantes Essen gilt nicht automatisch als gegessen.
+- Kein täglicher Planungszwang. Ein optionaler Wochenplan erlaubt mehrere Einträge für beliebige Tage und Mahlzeiten, auch mehrere Gerichte zur selben Mahlzeit.
+- Persistente Status sind `PLANNED` und `EATEN`. Ein Vorschlag ist keine Planung und keine Planung ist gegessen. Bestätigen überführt dieselbe Zeile von geplant nach gegessen.
+- Die Historie erfasst Datum, Mahlzeitentyp, Grundgericht, gegebenenfalls Variante, Mitessende und einen optionalen Kommentar. Sie kann auch ohne vorherige Planung nachgetragen werden.
+- Einträge gelten für die Familie. Jede angemeldete Person darf sie anlegen, ändern und löschen. Sternebewertungen bleiben davon unberührt.
+- Mitessende werden pro Mahlzeit gespeichert. Neue Mitessende müssen aktive Mitglieder sein. Deaktivierte Personen bleiben in bestehenden Einträgen sichtbar.
 
 ## 6. Empfehlungen
 
@@ -95,7 +94,7 @@ Ein leeres Textfeld ist nicht gesetzt und wird nicht gespeichert. Deshalb zeigt 
 
 ### 6.2 Fairness und Lernen
 - Nicht nur Mittelwert: Eine extrem schlechte Bewertung eines Mitessenden soll stärker zählen als ein einfacher Durchschnitt suggeriert. Die umgesetzte Startformel steht in [`empfehlungslogik.md`](empfehlungslogik.md). Ein-Stern-Bewertungen ziehen ein Gericht unter ein unbewertetes, ohne es hart auszuschließen.
-- Wiederholungen derselben Gerichte und Kategorien reduzieren; nicht starr die Top-3 anzeigen. Die aktuelle Ziehung vermeidet doppelte Gerichtsfamilien und würfelt gewichtet. Eine Vermeidung anhand der Kochhistorie folgt erst mit der Historie.
+- Wiederholungen derselben Gerichte und Gerichtsfamilien reduzieren die Ziehung, schließen sie aber nicht aus. Kürzlich gegessene Mahlzeiten und bereits geplante Gerichte fließen als zeitlich abklingende Strafe ein. Die konkrete Formel steht in [`empfehlungslogik.md`](empfehlungslogik.md).
 - Ein nicht ausgewählter Vorschlag ist **keine** ausdrückliche Ablehnung.
 - Wiederholt gewählte Gerichte können einen kleinen Bonus erhalten; ausdrückliche wiederholte Ablehnungen einen kleinen, zeitlich abklingenden Malus. Beides ist noch nicht umgesetzt.
 - Das System verändert niemals Sternebewertungen automatisch. Lernsignale müssen nachvollziehbar und bei Bedarf zurücksetzbar sein.
@@ -170,7 +169,7 @@ Anforderungen an die technische Modellierung: Variantenvererbung mit klarer Übe
 
 **Ausbaustufe 2:** OpenAI-Integration, natürlichsprachliche Eingaben, kontrollierte Schreibaktionen, Familien-/Personenregeln, gelegentliche neue Ideen.
 
-**Ausbaustufe 3:** Optionale Abstimmungen, Wochenkalender, behutsames Lernen und verfeinerte Erklärbarkeit. Die Reihenfolge kann nach MVP-Tests angepasst werden.
+**Ausbaustufe 3:** Optionale Abstimmungen, automatische Wochenplanung, behutsames Lernen und verfeinerte Erklärbarkeit. Ein einfacher Wochenplan und die Historie gehören bereits zum MVP. Die Reihenfolge kann nach MVP-Tests angepasst werden.
 
 ## 14. Akzeptanzkriterien (Auswahl)
 
@@ -190,7 +189,7 @@ Anforderungen an die technische Modellierung: Variantenvererbung mit klarer Übe
 
 ## 15. Noch zu präzisierende Details vor Implementierung
 
-- Wiederholungsfenster anhand der Kochhistorie. Die aktuelle Ziehung kennt noch keine vergangenen Mahlzeiten.
+- Wiederholungsfenster und Mitessendenanteil sind in [`empfehlungslogik.md`](empfehlungslogik.md) als Startparameter festgelegt.
 - Definition und sichere Behandlung von Allergien und harten Ausschlüssen.
 - Abstimmungsfristen, Gleichstand und Benachrichtigungen.
 - Sichtbarkeit/Änderungsrechte für persönliche Regeln und Kommentare.

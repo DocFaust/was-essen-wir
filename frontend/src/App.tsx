@@ -18,6 +18,8 @@ import { DishListPage } from './dishes/DishListPage';
 import { VariantFormPage } from './dishes/VariantFormPage';
 import { ErrorState, LoadingState } from './dishes/ui';
 import { HomePage } from './HomePage';
+import { HistoryPage } from './meals/HistoryPage';
+import { PlanPage } from './meals/PlanPage';
 
 export function App() {
   return (
@@ -32,11 +34,13 @@ function AppShell() {
   const { phase, user, refresh, logout } = useAuth();
   const section = location.pathname.startsWith('/gerichte')
     ? '/gerichte'
-    : location.pathname.startsWith('/profil')
-      ? '/profil'
-      : location.pathname.startsWith('/benutzer')
-        ? '/benutzer'
-        : '/';
+    : location.pathname.startsWith('/plan')
+      ? '/plan'
+      : location.pathname.startsWith('/historie')
+        ? '/historie'
+        : location.pathname.startsWith('/profil') || location.pathname.startsWith('/benutzer')
+          ? '/profil'
+          : '/';
   const showNavigation = phase === 'ready' && user !== null && !user.passwordChangeRequired;
 
   return (
@@ -55,11 +59,16 @@ function AppShell() {
         <Stack
           direction="row"
           spacing={1}
-          sx={{ px: 2, pt: 1, alignItems: 'center', flexShrink: 0, minWidth: 0 }}
+          sx={{ px: 2, pt: 1, alignItems: 'center', flexShrink: 0, minWidth: 0, flexWrap: 'wrap' }}
         >
           <Typography data-testid="current-user" sx={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
             {user.displayName}
           </Typography>
+          {user.role === 'ADMIN' ? (
+            <Button component={RouterLink} to="/benutzer" variant="text" sx={{ minWidth: 0, px: 1 }}>
+              Familie
+            </Button>
+          ) : null}
           <Button type="button" variant="outlined" onClick={() => void logout()} data-testid="logout">
             Abmelden
           </Button>
@@ -89,6 +98,8 @@ function AppShell() {
           {showNavigation && user ? (
             <Routes key={user.id}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/plan" element={<PlanPage userId={user.id} />} />
+              <Route path="/historie" element={<HistoryPage userId={user.id} />} />
               <Route path="/gerichte" element={<DishListPage />} />
               <Route path="/gerichte/neu" element={<DishFormPage />} />
               <Route path="/gerichte/:id" element={<DishDetailPage />} />
@@ -104,31 +115,42 @@ function AppShell() {
       </Box>
       {showNavigation ? (
         <Paper component="nav" aria-label="Hauptnavigation" elevation={3} sx={{ flexShrink: 0 }}>
-          <BottomNavigation showLabels value={section} sx={{ height: 64 }}>
-            <BottomNavigationAction label="Start" value="/" component={RouterLink} to="/" sx={{ minWidth: 0, px: 0.5 }} />
+          <BottomNavigation
+            showLabels
+            value={section}
+            sx={{
+              height: 72,
+              '& .MuiBottomNavigationAction-label': {
+                fontSize: '0.7rem',
+                lineHeight: 1.15,
+                whiteSpace: 'normal',
+                '&.Mui-selected': { fontSize: '0.7rem' },
+              },
+            }}
+          >
+            <BottomNavigationAction label="Start" value="/" component={RouterLink} to="/" sx={{ minWidth: 0, px: 0.25 }} />
+            <BottomNavigationAction label="Plan" value="/plan" component={RouterLink} to="/plan" sx={{ minWidth: 0, px: 0.25 }} />
+            <BottomNavigationAction
+              label="Historie"
+              value="/historie"
+              component={RouterLink}
+              to="/historie"
+              sx={{ minWidth: 0, px: 0.25 }}
+            />
             <BottomNavigationAction
               label="Gerichte"
               value="/gerichte"
               component={RouterLink}
               to="/gerichte"
-              sx={{ minWidth: 0, px: 0.5 }}
+              sx={{ minWidth: 0, px: 0.25 }}
             />
             <BottomNavigationAction
               label="Profil"
               value="/profil"
               component={RouterLink}
               to="/profil"
-              sx={{ minWidth: 0, px: 0.5 }}
+              sx={{ minWidth: 0, px: 0.25 }}
             />
-            {user?.role === 'ADMIN' ? (
-              <BottomNavigationAction
-                label="Familie"
-                value="/benutzer"
-                component={RouterLink}
-                to="/benutzer"
-                sx={{ minWidth: 0, px: 0.5 }}
-              />
-            ) : null}
           </BottomNavigation>
         </Paper>
       ) : null}

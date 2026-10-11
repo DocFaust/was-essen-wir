@@ -20,8 +20,48 @@ public final class RecommendationWeights {
     public static final double MIN_WEIGHT = 0.25;
     public static final double STRONG_LIKING = 2.5;
     public static final int SUGGESTION_LIMIT = 3;
+    public static final double FAMILY_FACTOR = 0.5;
+    public static final double RECENCY_CAP = 12;
+    public static final double PLANNED_CAP = 6;
+    public static final int EATEN_WINDOW_DAYS = 14;
+    public static final int PLANNED_WINDOW_DAYS = 7;
 
     private RecommendationWeights() {}
+
+    public static double eatenBase(int daysAgo) {
+        if (daysAgo < 0 || daysAgo > EATEN_WINDOW_DAYS) {
+            return 0;
+        }
+        if (daysAgo == 0) {
+            return 8;
+        }
+        if (daysAgo == 1) {
+            return 6;
+        }
+        if (daysAgo <= 3) {
+            return 4;
+        }
+        if (daysAgo <= 7) {
+            return 2;
+        }
+        return 1;
+    }
+
+    public static double plannedBase(int daysAhead) {
+        if (daysAhead < 0 || daysAhead > PLANNED_WINDOW_DAYS) {
+            return 0;
+        }
+        if (daysAhead == 0) {
+            return 4;
+        }
+        if (daysAhead == 1) {
+            return 3;
+        }
+        if (daysAhead <= 3) {
+            return 2;
+        }
+        return 1;
+    }
 
     public static double starWeight(int stars) {
         return switch (stars) {

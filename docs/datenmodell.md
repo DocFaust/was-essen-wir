@@ -1,8 +1,8 @@
 # Datenmodell
 
-Iteration 4 persistiert persönliche Bewertungen. Iteration 5 berechnet Vorschläge daraus, speichert sie aber nicht. Planung, Historie, Abstimmungen und Audit bleiben Kandidaten für spätere Iterationen: `PreferenceRule`, `MealPlan`, `MealHistory`, `MealParticipant`, `PreparedPortion`, `SuggestionSession`, `DecisionEvent`, `Vote`, `AuditEvent`.
+Iteration 4 persistiert persönliche Bewertungen. Iteration 5 berechnet Vorschläge daraus und speichert sie nicht. Iteration 6 speichert Planung und Historie in einer gemeinsamen Mahlzeit. Abstimmungen und Audit bleiben Kandidaten für spätere Iterationen: `PreferenceRule`, `PreparedPortion`, `SuggestionSession`, `DecisionEvent`, `Vote`, `AuditEvent`.
 
-`PreparedPortion` erhält später Empfänger, Verzehrdatum, Status und eine optionale Referenz auf den ursprünglichen Kochvorgang. Keine Lagerbestandsverwaltung.
+`PreparedPortion` erhält später Empfänger, Verzehrdatum, Status und eine optionale Referenz auf den ursprünglichen Kochvorgang. Keine Lagerbestandsverwaltung. Eine geplante oder gegessene Mahlzeit ist noch keine vorbereitete Portion.
 
 ## Grundgericht `dish`
 
@@ -63,6 +63,27 @@ Eine Tabelle für beide Ziele, analog zu `ingredient`. Grundgericht und Variante
 | `created_at`, `updated_at` | Zeitpunkte; Ändern lässt `created_at` stehen |
 
 `rating_one_target` verlangt genau eine der beiden Referenzen. `rating_stars_range` lässt nur 1 bis 5 zu. Teilindizes erzwingen höchstens eine Zeile pro Benutzer und Grundgericht und pro Benutzer und Variante. Fremdschlüssel mit `ON DELETE CASCADE` entfernen Bewertungen, wenn das Gericht, die Variante oder das Benutzerkonto gelöscht wird. Eine Variante zu löschen lässt die Bewertung des Grundgerichts stehen. Fehlende Zeile bedeutet *nicht bewertet*, nicht drei Sterne.
+
+## Mahlzeit `meal_event`
+
+Eine Zeile ist entweder geplant oder gegessen. Bestätigen ändert `status` und legt keinen zweiten Eintrag an. Dieselbe Mahlzeit kann an mehreren Tagen vorkommen, und ein Tag kann mehrere Zeilen derselben Mahlzeit haben.
+
+| Spalte | Bedeutung |
+| --- | --- |
+| `id` | UUID, von der Anwendung vergeben |
+| `meal_date` | Kalendertag, ohne Uhrzeit |
+| `meal_type` | `FRUEHSTUECK`, `MITTAGESSEN`, `ABENDESSEN`, `SNACK` |
+| `status` | `PLANNED` oder `EATEN` |
+| `dish_id` | Grundgericht, leer nachdem das Gericht gelöscht wurde |
+| `variant_id` | Variante oder leer |
+| `dish_name`, `variant_name` | Namenssnapshot zum Speicherzeitpunkt |
+| `comment` | optional, höchstens 500 Zeichen |
+| `created_by` | anlegende Person aus der Sitzung, leer wenn das Konto gelöscht wurde |
+| `created_at`, `updated_at` | Zeitpunkte |
+
+Mitessende liegen in `meal_participant`: technische ID, Mahlzeit, Benutzer und Anzeigename. Dieselbe Person steht je Mahlzeit nur einmal. `user_id` wird leer, wenn das Konto gelöscht wird; `display_name` bleibt. Eine Mahlzeit ohne Mitessende lässt die Datenbank am Transaktionsende nicht zu.
+
+Gericht und Variante verwenden `ON DELETE SET NULL`. Die Zeile und der Snapshot bleiben, damit die Historie lesbar bleibt. Eine Variante muss zum referenzierten Gericht gehören, solange beide Verweise gesetzt sind. Wiederholungsberechnungen ignorieren Zeilen ohne `dish_id`. Eine gelöschte Variante, deren Name noch im Snapshot steht, zählt nur noch als Familie und nicht als das Grundgericht.
 
 ## API
 
@@ -129,6 +150,22 @@ Aktive Mitglieder für die Mitessendenauswahl, für jede angemeldete Person:
 
 Essensvorschläge, `POST /api/recommendations`, für jede angemeldete Person. Der Körper enthält `mealType`, `dinerIds`, optional `preferSimple`, `preferHomeOffice`, `preferMealPrep`, `excludedDishIds` und `seed`. `excludedDishIds` sind Grundgerichte und schließen die ganze Gerichtsfamilie aus. `seed` macht die Ziehung wiederholbar; ohne Seed würfelt das Backend.
 
-Die Antwort enthält `suggestions` mit höchstens drei Einträgen und optional `explanation`. Jeder Vorschlag hat `dishId`, `variantId`, `name`, `dishName`, `variantName`, `reason`, `effort`, `mealPrep` und `homeOffice`. Keine Sterne, keine Benutzerkennungen und kein Score. Unbekannte oder inaktive Mitessende antworten mit `400`. Eine fehlende Mahlzeit ebenfalls. Weniger als drei passende Familien liefern weniger Vorschläge und einen Erklärungssatz.
+Die Antwort enthält `suggestions` mit höchstens drei Einträgen und optional `explanation`. Jeder Vorschlag hat `dishId`, `variantId`, `name`, `dishName`, `variantName`, `reason`, `effort`, `mealPrep` und `homeOffice`. Keine Sterne, keine Benutzerkennungen und kein Score. Unbekannte oder inaktive Mitessende antworten mit `400`. Eine fehlende Mahlzeit ebenfalls. Weniger als drei passende Familien liefern weniger Vorschläge und einen Erklärungssatz. Optional kann `referenceDate` als `YYYY-MM-DD` mitgeschickt werden. Ohne dieses Feld gilt der lokale Kalendertag der Installation.
+
+Planung und Historie, für jede angemeldete Person. Der Schreibkörper enthält `mealDate`, `mealType`, `dishId`, optionales `variantId`, `dinerIds` und optionalen `comment`. Die Erstellerin kommt aus der Sitzung.
+
+| Methode | Pfad | Erfolg |
+| --- | --- | --- |
+| `GET` | `/api/meal-plans?from&to` | geplante Mahlzeiten im Zeitraum |
+| `POST` | `/api/meal-plans` | `201` und die Planung |
+| `PUT` | `/api/meal-plans/{id}` | geänderte oder verschobene Planung |
+| `DELETE` | `/api/meal-plans/{id}` | `204` |
+| `POST` | `/api/meal-plans/{id}/eaten` | dieselbe Zeile, jetzt `EATEN` |
+| `GET` | `/api/meal-history?from&to&dinerId` | gegessene Mahlzeiten, neueste zuerst; `dinerId` ist optional |
+| `POST` | `/api/meal-history` | `201`, auch ohne vorherige Planung |
+| `PUT` | `/api/meal-history/{id}` | korrigierter Historieneintrag |
+| `DELETE` | `/api/meal-history/{id}` | `204` |
+
+Ein falscher Status, zum Beispiel eine schon gegessene Mahlzeit noch einmal bestätigen, antwortet mit `409`. Unbekannte Gerichte mit `404`, eine Variante eines anderen Gerichts und unbekannte oder inaktive neue Mitessende mit `400`. Deaktivierte Personen, die schon Mitessende sind, dürfen beim Korrigieren bleiben. Antworten nennen den Snapshot-Namen auch dann, wenn `dishId` leer ist.
 
 Eignungswerte eines Grundgerichts sind `UNKNOWN`, `SUITABLE` und `UNSUITABLE`. Eine Variante sendet `INHERIT`, `SUITABLE` oder `UNSUITABLE`. In `resolved` steht der wirksame Wert und ob er übernommen wurde. Die Oberfläche zeigt `resolved` an und schickt die gespeicherten Felder beim Speichern zurück.

@@ -14,6 +14,15 @@ public final class RecommendationScorer {
             List<UUID> dinerIds,
             RatingLookup ratings,
             RecommendationPreferences preferences) {
+        return score(candidate, dinerIds, ratings, preferences, RepetitionIndex.empty());
+    }
+
+    public static ScoredCandidate score(
+            Candidate candidate,
+            List<UUID> dinerIds,
+            RatingLookup ratings,
+            RecommendationPreferences preferences,
+            RepetitionIndex repetition) {
         int diners = dinerIds.size();
         double contribution = 0;
         int oneStarCount = 0;
@@ -52,6 +61,9 @@ public final class RecommendationScorer {
         factors.add(new ScoreFactor("agreement", agreement));
         factors.add(new ScoreFactor("exploration", exploration));
         factors.addAll(contextFactors(candidate, preferences));
+        RepetitionPenalty repetitionPenalty = RecencyCalculator.penalty(candidate, dinerIds, repetition);
+        factors.add(new ScoreFactor("recency", repetitionPenalty.eaten()));
+        factors.add(new ScoreFactor("planned", repetitionPenalty.planned()));
 
         double score = 0;
         for (ScoreFactor factor : factors) {
@@ -100,7 +112,7 @@ public final class RecommendationScorer {
         };
     }
 
-    static double factor(ScoredCandidate scored, String id) {
+    public static double factor(ScoredCandidate scored, String id) {
         return scored.factors().stream()
                 .filter(factor -> factor.id().equals(id))
                 .mapToDouble(ScoreFactor::value)

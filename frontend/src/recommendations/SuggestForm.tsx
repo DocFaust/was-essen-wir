@@ -14,6 +14,10 @@ import type { MealType } from '../dishes/types';
 import { ChoiceButtons, ErrorState, LoadingState } from '../dishes/ui';
 import { listMembers, recommend } from './api';
 import type { Member, RecommendationResponse, Suggestion } from './types';
+import { MealEventForm } from '../meals/MealEventForm';
+import { createHistory, createPlan } from '../meals/api';
+import { todayIso } from '../meals/dates';
+import type { MealDraft, MealEventWrite } from '../meals/types';
 
 type ExcludedDish = {
   id: string;
@@ -33,6 +37,7 @@ export function SuggestForm({ userId }: { userId: string }) {
   const [result, setResult] = useState<RecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mealDraft, setMealDraft] = useState<MealDraft | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -185,6 +190,26 @@ export function SuggestForm({ userId }: { userId: string }) {
                   { id: suggestion.dishId, name: suggestion.dishName },
                 ])
               }
+              onPlan={() =>
+                setMealDraft({
+                  mode: 'plan',
+                  mealDate: todayIso(),
+                  mealType,
+                  dishId: suggestion.dishId,
+                  variantId: suggestion.variantId,
+                  dinerIds: selectedDiners,
+                })
+              }
+              onEaten={() =>
+                setMealDraft({
+                  mode: 'eaten',
+                  mealDate: todayIso(),
+                  mealType,
+                  dishId: suggestion.dishId,
+                  variantId: suggestion.variantId,
+                  dinerIds: selectedDiners,
+                })
+              }
             />
           ))}
           {result.suggestions.length > 0 ? (
@@ -200,6 +225,19 @@ export function SuggestForm({ userId }: { userId: string }) {
           ) : null}
         </Stack>
       ) : null}
+      <MealEventForm
+        draft={mealDraft}
+        userId={userId}
+        onClose={() => setMealDraft(null)}
+        onSubmit={async (body: MealEventWrite) => {
+          if (mealDraft?.mode === 'plan') {
+            await createPlan(body);
+          } else {
+            await createHistory(body);
+          }
+          setMealDraft(null);
+        }}
+      />
     </Stack>
   );
 }
@@ -208,10 +246,14 @@ function SuggestionCard({
   suggestion,
   disabled,
   onExclude,
+  onPlan,
+  onEaten,
 }: {
   suggestion: Suggestion;
   disabled: boolean;
   onExclude: () => void;
+  onPlan: () => void;
+  onEaten: () => void;
 }) {
   const traits = traitsOf(suggestion);
   return (
@@ -232,14 +274,14 @@ function SuggestionCard({
             ))}
           </Stack>
         ) : null}
-        <Button
-          component={RouterLink}
-          to={`/gerichte/${suggestion.dishId}`}
-          variant="outlined"
-          fullWidth
-          data-testid="open-suggestion"
-        >
+        <Button component={RouterLink} to={`/gerichte/${suggestion.dishId}`} variant="outlined" fullWidth data-testid="open-suggestion">
           Gericht öffnen
+        </Button>
+        <Button type="button" variant="contained" fullWidth data-testid="suggestion-plan" onClick={onPlan}>
+          Einplanen
+        </Button>
+        <Button type="button" variant="outlined" fullWidth data-testid="suggestion-eaten" onClick={onEaten}>
+          Als gegessen eintragen
         </Button>
         <Button type="button" variant="text" fullWidth disabled={disabled} data-testid="exclude-suggestion" onClick={onExclude}>
           Nicht dieses Gericht

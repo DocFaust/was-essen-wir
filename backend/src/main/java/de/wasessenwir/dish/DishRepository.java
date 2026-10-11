@@ -101,6 +101,21 @@ public class DishRepository {
                 .optional();
     }
 
+    public Optional<String> findDishName(UUID id) {
+        return jdbc.sql("select name from dish where id = :id")
+                .param("id", id)
+                .query(String.class)
+                .optional();
+    }
+
+    public Optional<String> findVariantName(UUID dishId, UUID variantId) {
+        return jdbc.sql("select name from dish_variant where id = :id and dish_id = :dishId")
+                .param("id", variantId)
+                .param("dishId", dishId)
+                .query(String.class)
+                .optional();
+    }
+
     public boolean dishNameExists(String name, UUID excludeId) {
         Long count = jdbc.sql("""
                 select count(*)

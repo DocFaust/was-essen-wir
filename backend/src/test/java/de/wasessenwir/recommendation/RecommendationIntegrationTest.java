@@ -270,7 +270,7 @@ class RecommendationIntegrationTest {
         ResponseEntity<String> empty = post(restTemplate, request(MealType.ABENDESSEN, List.of(), List.of(), 1L));
         ResponseEntity<String> missingMeal = restTemplate.postForEntity(
                 "/api/recommendations",
-                new RecommendationRequest(null, List.of(ada), false, false, false, List.of(), 1L),
+                new RecommendationRequest(null, List.of(ada), false, false, false, List.of(), 1L, null),
                 String.class);
         HttpHeaders json = new HttpHeaders();
         json.setContentType(MediaType.APPLICATION_JSON);
@@ -379,7 +379,8 @@ class RecommendationIntegrationTest {
             boolean preferSimple,
             boolean preferHomeOffice,
             boolean preferMealPrep) {
-        return new RecommendationRequest(mealType, diners, preferSimple, preferHomeOffice, preferMealPrep, excluded, seed);
+        return new RecommendationRequest(
+                mealType, diners, preferSimple, preferHomeOffice, preferMealPrep, excluded, seed, null);
     }
 
     private DishDetailResponse createDish(String name, MealType mealType, Effort effort) {

@@ -60,6 +60,16 @@ public class UserRepository {
                 .list();
     }
 
+    public List<StoredUser> findByIds(Collection<UUID> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql("select * from app_user where id in (:ids)")
+                .param("ids", ids)
+                .query(MAPPER)
+                .list();
+    }
+
     public List<UUID> findActiveIds(Collection<UUID> ids) {
         if (ids.isEmpty()) {
             return List.of();
