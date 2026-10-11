@@ -66,6 +66,12 @@ final class FixtureAiProvider implements AiProvider {
         return mapper.writeValueAsString(body);
     }
 
+    @Override
+    public String draft(String systemPrompt, String userMessage) {
+        DraftKind kind = systemPrompt != null && systemPrompt.contains("Art: VARIANT") ? DraftKind.VARIANT : DraftKind.DISH;
+        return DishDraftJson.write(mapper, DishDraftFacts.read(userMessage, kind));
+    }
+
     private LocalDate date(String folded) {
         LocalDate today = LocalDate.now(clock);
         if (folded.contains("übermorgen")) {

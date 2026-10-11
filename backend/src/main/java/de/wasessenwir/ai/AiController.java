@@ -11,9 +11,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AiController {
 
     private final AiAssistantService assistant;
+    private final DishDraftService drafts;
 
-    public AiController(AiAssistantService assistant) {
+    public AiController(AiAssistantService assistant, DishDraftService drafts) {
         this.assistant = assistant;
+        this.drafts = drafts;
     }
 
     @GetMapping("/status")
@@ -24,5 +26,10 @@ public class AiController {
     @PostMapping("/recommendations")
     AiRecommendationResponse recommend(@RequestBody AiRecommendationRequest request) {
         return assistant.recommend(request);
+    }
+
+    @PostMapping("/dish-drafts")
+    DishDraftResponse draft(@RequestBody DishDraftRequest request) {
+        return drafts.create(request);
     }
 }

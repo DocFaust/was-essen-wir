@@ -112,7 +112,7 @@ test('verlangt einen Namen für eine Variante', async () => {
   await userEvent.click(screen.getByTestId('save-variant'));
 
   expect(screen.getByRole('alert')).toHaveTextContent('Der Name ist erforderlich.');
-  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock.mock.calls.some((call) => String(call[1]?.method).toUpperCase() === 'POST')).toBe(false);
 });
 
 function json(body: unknown, status = 200): Response {

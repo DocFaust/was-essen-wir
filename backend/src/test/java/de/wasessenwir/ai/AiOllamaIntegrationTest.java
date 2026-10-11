@@ -321,6 +321,86 @@ class AiOllamaIntegrationTest {
     }
 
     @Test
+    void draftsADishWithoutSendingRatingsAndRejectsABadModelReply() {
+        createDish("GeheimesRagout", MealType.ABENDESSEN, null, Suitability.UNKNOWN, Suitability.UNKNOWN, List.of(), List.of("Hackfleisch"));
+        rateDish(restTemplate, userDish(), 5);
+        reply("""
+                {"schemaVersion":1,"name":"Kartoffelgratin","description":null,"mealTypes":["ABENDESSEN"],
+                "categories":[],"effort":"EINFACH","ingredients":["Trüffel"],"removedIngredients":[],
+                "recipeText":null,"recipeUrl":null,"recipeSource":null,"comments":null,
+                "mealPrep":true,"homeOffice":null,"warnings":[]}
+                """);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                "/api/ai/dish-drafts",
+                new DishDraftRequest("Wir machen manchmal Kartoffelgratin.", DraftKind.DISH, null),
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getCacheControl()).contains("no-store");
+        assertThat(response.getBody()).contains("Kartoffelgratin").doesNotContain("Trüffel").doesNotContain("ABENDESSEN");
+        assertThat(response.getBody()).contains("\"mealPrep\":null");
+        String outbound = REQUESTS.getLast();
+        assertThat(outbound).contains("schemaVersion").contains("Wir machen manchmal Kartoffelgratin.");
+        assertThat(outbound).doesNotContain("\"format\":\"json\"");
+        assertThat(outbound).doesNotContain("stars").doesNotContain("Lovelace").doesNotContain("Hackfleisch");
+        assertThat(outbound).doesNotContain("GeheimesRagout");
+        assertThat(count("dish")).isEqualTo(1);
+
+        reply("kein json");
+        ResponseEntity<String> invalid = restTemplate.postForEntity(
+                "/api/ai/dish-drafts",
+                new DishDraftRequest("Wir machen manchmal Suppe.", DraftKind.DISH, null),
+                String.class);
+        assertThat(invalid.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(invalid.getBody()).contains("AI_INVALID").doesNotContain("Exception");
+
+        reply(template().replace("\"name\":\"Suppe\",", ""));
+        ResponseEntity<String> missing = restTemplate.postForEntity(
+                "/api/ai/dish-drafts",
+                new DishDraftRequest("Wir machen manchmal Suppe.", DraftKind.DISH, null),
+                String.class);
+        assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(missing.getBody()).contains("AI_INVALID");
+
+        reply(template().replace("\"effort\":null", "\"effort\":\"SCHNELL\""));
+        ResponseEntity<String> badEnum = restTemplate.postForEntity(
+                "/api/ai/dish-drafts",
+                new DishDraftRequest("Wir machen manchmal Suppe.", DraftKind.DISH, null),
+                String.class);
+        assertThat(badEnum.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(count("dish")).isEqualTo(1);
+    }
+
+    @Test
+    void draftTimesOutAndReportsAnUnreachableProvider() {
+        behavior = exchange -> {
+            try {
+                Thread.sleep(5_000);
+                write(exchange, 200, wrapper("{}"));
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        ResponseEntity<String> timeout = restTemplate.postForEntity(
+                "/api/ai/dish-drafts",
+                new DishDraftRequest("Wir machen manchmal Suppe.", DraftKind.DISH, null),
+                String.class);
+        assertThat(timeout.getStatusCode()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT);
+        assertThat(timeout.getBody()).contains("AI_TIMEOUT").doesNotContain("http://");
+        assertThat(REQUESTS).hasSize(1);
+
+        behavior = exchange -> write(exchange, 503, "{}");
+        ResponseEntity<String> down = restTemplate.postForEntity(
+                "/api/ai/dish-drafts",
+                new DishDraftRequest("Wir machen manchmal Suppe.", DraftKind.DISH, null),
+                String.class);
+        assertThat(down.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(down.getBody()).contains("AI_UNAVAILABLE");
+        assertThat(count("dish")).isZero();
+    }
+
+    @Test
     void keepsTheClassicRecommendationAvailable() {
         createDish("Suppe", MealType.ABENDESSEN, null, Suitability.UNKNOWN, Suitability.UNKNOWN, List.of(), List.of());
         UUID ada = userId("ada");
@@ -478,6 +558,14 @@ class AiOllamaIntegrationTest {
                 avoid,
                 clarify,
                 question == null ? "null" : "\"" + question + "\"");
+    }
+
+    private static String template() {
+        return """
+                {"schemaVersion":1,"name":"Suppe","description":null,"mealTypes":[],"categories":[],
+                "effort":null,"ingredients":[],"removedIngredients":[],"recipeText":null,"recipeUrl":null,
+                "recipeSource":null,"comments":null,"mealPrep":null,"homeOffice":null,"warnings":[]}
+                """;
     }
 
     private static String wrapper(String content) {

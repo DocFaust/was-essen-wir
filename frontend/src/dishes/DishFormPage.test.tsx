@@ -39,18 +39,28 @@ function renderCreate() {
 }
 
 test('verlangt einen Namen', async () => {
-  const fetchMock = vi.fn<typeof fetch>();
+  const fetchMock = vi.fn<typeof fetch>(async (input) => {
+    if (String(input).includes('/api/ai/status')) {
+      return json({ enabled: false, provider: null });
+    }
+    return json({});
+  });
   vi.stubGlobal('fetch', fetchMock);
 
   renderCreate();
   await userEvent.click(screen.getByTestId('save-dish'));
 
   expect(screen.getByRole('alert')).toHaveTextContent('Der Name ist erforderlich.');
-  expect(fetchMock).not.toHaveBeenCalled();
+  expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('/api/dishes'))).toBe(false);
 });
 
 test('legt ein Gericht mit Rezeptquelle und Zutat an', async () => {
-  const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(json(saved, 201));
+  const fetchMock = vi.fn<typeof fetch>(async (input) => {
+    if (String(input).includes('/api/ai/status')) {
+      return json({ enabled: false, provider: null });
+    }
+    return json(saved, 201);
+  });
   vi.stubGlobal('fetch', fetchMock);
 
   renderCreate();
@@ -62,7 +72,8 @@ test('legt ein Gericht mit Rezeptquelle und Zutat an', async () => {
   await userEvent.click(screen.getByTestId('save-dish'));
 
   expect(await screen.findByText('Gespeichert')).toBeInTheDocument();
-  const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+  const post = fetchMock.mock.calls.find((call) => call[1]?.method === 'POST');
+  const body = JSON.parse(String(post?.[1]?.body));
   expect(body).toMatchObject({
     name: 'Linsensuppe',
     recipeSource: 'Eigenkreation',
@@ -72,12 +83,17 @@ test('legt ein Gericht mit Rezeptquelle und Zutat an', async () => {
 });
 
 test('warnt vor einem gleichnamigen Gericht und speichert erst nach Bestätigung', async () => {
-  const fetchMock = vi
-    .fn<typeof fetch>()
-    .mockResolvedValueOnce(
-      json({ detail: 'Es gibt bereits ein Gericht mit diesem Namen.', code: 'DUPLICATE_DISH_NAME' }, 409),
-    )
-    .mockResolvedValueOnce(json(saved, 201));
+  const posts: string[] = [];
+  const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+    if (String(input).includes('/api/ai/status')) {
+      return json({ enabled: false, provider: null });
+    }
+    posts.push(String(init?.body));
+    if (posts.length === 1) {
+      return json({ detail: 'Es gibt bereits ein Gericht mit diesem Namen.', code: 'DUPLICATE_DISH_NAME' }, 409);
+    }
+    return json(saved, 201);
+  });
   vi.stubGlobal('fetch', fetchMock);
 
   renderCreate();
@@ -88,7 +104,7 @@ test('warnt vor einem gleichnamigen Gericht und speichert erst nach Bestätigung
   await userEvent.click(screen.getByRole('button', { name: 'Trotzdem speichern' }));
 
   expect(await screen.findByText('Gespeichert')).toBeInTheDocument();
-  const body = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+  const body = JSON.parse(posts[1]);
   expect(body.confirmDuplicate).toBe(true);
 });
 

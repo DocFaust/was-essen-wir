@@ -5,8 +5,12 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useRef, useState } from 'react';
-import { Link as RouterLink, useNavigate, useParams } from 'react-router';
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router';
+import { aiStatus } from '../recommendations/api';
 import { ApiError, createVariant, getDish, updateVariant } from './api';
+import { CapturePanel } from './CapturePanel';
+import { DraftSummary } from './DraftSummary';
+import type { DishDraft } from './draft';
 import { EFFORTS, EFFORT_LABELS, SUITABILITY_SETTING_LABELS, emptyToNull } from './labels';
 import type { DishDetail, DishVariant, Effort, SuitabilitySetting, VariantWrite } from './types';
 import { ChoiceButtons, ErrorState, LoadingState, NameListEditor, StickyActions } from './ui';
@@ -85,14 +89,68 @@ export function VariantFormPage() {
 
 function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVariant }) {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [form, setForm] = useState<FormState>(() => (variant ? fromVariant(variant) : EMPTY_FORM));
   const [detailsOpen, setDetailsOpen] = useState(Boolean(variant));
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [mode, setMode] = useState<'manual' | 'ai'>(!variant && params.get('erfassung') === 'ki' ? 'ai' : 'manual');
+  const [draftMeta, setDraftMeta] = useState<DishDraft | null>(null);
+  const [edited, setEdited] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (variant) {
+      return;
+    }
+    let active = true;
+    aiStatus()
+      .then((status) => {
+        if (!active) {
+          return;
+        }
+        setAiEnabled(status.enabled);
+        if (!status.enabled) {
+          setMode('manual');
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setAiEnabled(false);
+          setMode('manual');
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [variant]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+    if (draftMeta) {
+      setEdited((current) => (current.includes(key) ? current : [...current, key]));
+    }
+  }
+
+  function applyDraft(draft: DishDraft) {
+    setForm({
+      name: draft.name ?? '',
+      description: draft.description ?? '',
+      effort: draft.effort ?? '',
+      ingredientsSpecified: draft.ingredientsSpecified === true,
+      ingredients: draft.ingredients,
+      recipeText: draft.recipeText ?? '',
+      recipeUrl: draft.recipeUrl ?? '',
+      recipeSource: draft.recipeSource ?? '',
+      mealPrep: draft.mealPrep === true ? 'SUITABLE' : draft.mealPrep === false ? 'UNSUITABLE' : 'INHERIT',
+      homeOffice: draft.homeOffice === true ? 'SUITABLE' : draft.homeOffice === false ? 'UNSUITABLE' : 'INHERIT',
+    });
+    setDraftMeta(draft);
+    setEdited([]);
+    setDetailsOpen(true);
+    setMode('manual');
+    setMessage(null);
   }
 
   async function save() {
@@ -130,6 +188,22 @@ function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVarian
       <Typography color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
         Grundgericht: {dish.name}
       </Typography>
+      {!variant && aiEnabled ? (
+        <Stack spacing={1}>
+          <Button type="button" variant={mode === 'manual' ? 'contained' : 'outlined'} fullWidth onClick={() => setMode('manual')} data-testid="capture-manual">
+            Manuell erfassen
+          </Button>
+          <Button type="button" variant={mode === 'ai' ? 'contained' : 'outlined'} fullWidth onClick={() => setMode('ai')} data-testid="capture-ai">
+            Mit KI beschreiben
+          </Button>
+        </Stack>
+      ) : null}
+      {!variant && aiEnabled && mode === 'ai' ? (
+        <CapturePanel kind="VARIANT" baseDishId={dish.id} onDraft={applyDraft} onManual={() => setMode('manual')} />
+      ) : null}
+      {variant || mode === 'manual' ? (
+        <>
+      {draftMeta ? <DraftSummary draft={draftMeta} edited={edited} /> : null}
       {message ? <ErrorState message={message} /> : null}
       <TextField
         label="Name"
@@ -235,6 +309,12 @@ function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVarian
           Abbrechen
         </Button>
       </StickyActions>
+        </>
+      ) : (
+        <Button component={RouterLink} to={`/gerichte/${dish.id}`} variant="text" fullWidth data-testid="draft-cancel">
+          Abbrechen
+        </Button>
+      )}
     </Stack>
   );
 }

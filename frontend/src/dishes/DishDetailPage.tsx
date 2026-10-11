@@ -3,6 +3,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router';
+import { aiStatus } from '../recommendations/api';
 import { useViewerId } from '../auth/AuthProvider';
 import {
   ApiError,
@@ -37,6 +38,7 @@ export function DishDetailPage() {
   const [variantToDelete, setVariantToDelete] = useState<DishVariant | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [mealDraft, setMealDraft] = useState<MealDraft | null>(null);
+  const [aiEnabled, setAiEnabled] = useState(false);
   const [seenViewer, setSeenViewer] = useState(viewerId);
   const ratings = useRatingActions();
   if (seenViewer !== viewerId) {
@@ -70,6 +72,24 @@ export function DishDetailPage() {
       });
     return () => controller.abort();
   }, [id, attempt, viewerId]);
+
+  useEffect(() => {
+    let active = true;
+    aiStatus()
+      .then((status) => {
+        if (active) {
+          setAiEnabled(status.enabled);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setAiEnabled(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function publishDishRating(stars: number | null) {
     setDish((current) => (current ? { ...current, myRating: stars } : current));
@@ -286,6 +306,17 @@ export function DishDetailPage() {
       <Button component={RouterLink} to={`/gerichte/${dish.id}/varianten/neu`} variant="contained" fullWidth data-testid="add-variant">
         Variante anlegen
       </Button>
+      {aiEnabled ? (
+        <Button
+          component={RouterLink}
+          to={`/gerichte/${dish.id}/varianten/neu?erfassung=ki`}
+          variant="outlined"
+          fullWidth
+          data-testid="add-variant-ai"
+        >
+          Variante mit KI
+        </Button>
+      ) : null}
       <Button component={RouterLink} to={`/gerichte/${dish.id}/bearbeiten`} variant="outlined" fullWidth data-testid="edit-dish">
         Bearbeiten
       </Button>
