@@ -32,7 +32,7 @@ cd frontend
 npm run test:coverage
 ```
 
-`npm test` bleibt die Ausführung ohne Coverage-Grenze. Die Grenze gilt für `test:coverage`.
+`npm test` bleibt die Ausführung ohne Coverage-Grenze. Die Grenze gilt für den vollständigen Lauf `test:coverage`. Eine einzelne Testdatei unterschreitet sie, weil alle Quelldateien im Nenner bleiben. Die Vitest-Zeitgrenze liegt bei 15 Sekunden, weil die Instrumentierung die bestehenden Oberflächen-Tests auf dem CI-Runner über die Standardgrenze von 5 Sekunden hebt.
 
 ## Reportpfade
 
