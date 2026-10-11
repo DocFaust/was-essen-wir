@@ -24,6 +24,7 @@ const TITLES: Record<MealDraft['mode'], string> = {
   eaten: 'Als gegessen eintragen',
   'edit-plan': 'Planung bearbeiten',
   'edit-eaten': 'Eintrag bearbeiten',
+  'move-plan': 'Mahlzeit verschieben',
 };
 
 const SUBMIT_LABELS: Record<MealDraft['mode'], string> = {
@@ -31,6 +32,7 @@ const SUBMIT_LABELS: Record<MealDraft['mode'], string> = {
   eaten: 'Als gegessen eintragen',
   'edit-plan': 'Speichern',
   'edit-eaten': 'Speichern',
+  'move-plan': 'Verschieben',
 };
 
 export function MealEventForm({
@@ -53,6 +55,9 @@ export function MealEventForm({
   const [variantId, setVariantId] = useState('');
   const [dinerIds, setDinerIds] = useState<string[]>([]);
   const [comment, setComment] = useState('');
+  const [commentOpen, setCommentOpen] = useState(false);
+  const [pickDish, setPickDish] = useState(true);
+  const [selectedLabel, setSelectedLabel] = useState('');
   const [dishQuery, setDishQuery] = useState('');
   const [dishes, setDishes] = useState<DishSummary[] | null>(null);
   const [variants, setVariants] = useState<DishVariant[]>([]);
@@ -77,6 +82,9 @@ export function MealEventForm({
     setVariantId(draft.variantId ?? '');
     setDinerIds(draft.dinerIds.length > 0 ? draft.dinerIds : [userId]);
     setComment(draft.comment ?? '');
+    setCommentOpen(Boolean(draft.comment));
+    setPickDish(!draft.dishId);
+    setSelectedLabel(draft.dishName ?? '');
     setDishQuery('');
     setError(null);
     setVariants([]);
@@ -137,6 +145,7 @@ export function MealEventForm({
   const visibleDishes = (dishes ?? [])
     .filter((dish) => dish.id === dishId || dish.name.toLowerCase().includes(query))
     .slice(0, 30);
+  const selectedDishName = selectedLabel || dishes?.find((dish) => dish.id === dishId)?.name || '';
 
   async function save() {
     if (!draft || savingRef.current) {
@@ -196,7 +205,9 @@ export function MealEventForm({
               type="date"
               value={mealDate}
               onChange={(event) => setMealDate(event.target.value)}
+              required
               fullWidth
+              onFocus={revealField}
               slotProps={{ inputLabel: { shrink: true }, htmlInput: { 'data-testid': 'meal-date' } }}
             />
             <ChoiceButtons
@@ -205,40 +216,61 @@ export function MealEventForm({
               selected={mealType}
               onChange={setMealType}
             />
-            <TextField
-              label="Gericht suchen"
-              value={dishQuery}
-              onChange={(event) => setDishQuery(event.target.value)}
-              fullWidth
-              slotProps={{ htmlInput: { 'data-testid': 'meal-dish-search' } }}
-            />
-            {visibleDishes.length === 0 ? (
+            {dishId && !pickDish ? (
               <Stack spacing={1}>
-                <Typography color="text.secondary">Kein passendes Gericht.</Typography>
-                <Button component={RouterLink} to="/gerichte/neu" variant="outlined" fullWidth>
-                  Gericht anlegen
+                <Typography variant="body2" color="text.secondary">
+                  Gericht
+                </Typography>
+                <Typography data-testid="meal-selected-dish" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
+                  {selectedDishName}
+                </Typography>
+                <Button type="button" variant="text" fullWidth onClick={() => setPickDish(true)}>
+                  Anderes Gericht
                 </Button>
               </Stack>
             ) : (
-              <Stack spacing={1}>
-                {visibleDishes.map((dish) => (
-                  <Button
-                    key={dish.id}
-                    type="button"
-                    fullWidth
-                    variant={dish.id === dishId ? 'contained' : 'outlined'}
-                    aria-pressed={dish.id === dishId}
-                    data-testid="meal-dish-option"
-                    onClick={() => {
-                      setDishId(dish.id);
-                      setVariantId('');
-                    }}
-                    sx={{ justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal' }}
-                  >
-                    {dish.name}
-                  </Button>
-                ))}
-              </Stack>
+              <>
+                <TextField
+                  label="Gericht suchen"
+                  value={dishQuery}
+                  onChange={(event) => setDishQuery(event.target.value)}
+                  fullWidth
+                  onFocus={revealField}
+                  slotProps={{
+                    htmlInput: { 'data-testid': 'meal-dish-search', type: 'search', enterKeyHint: 'search' },
+                  }}
+                />
+                {visibleDishes.length === 0 ? (
+                  <Stack spacing={1}>
+                    <Typography color="text.secondary">Kein passendes Gericht.</Typography>
+                    <Button component={RouterLink} to="/gerichte/neu" variant="outlined" fullWidth>
+                      Gericht anlegen
+                    </Button>
+                  </Stack>
+                ) : (
+                  <Stack spacing={1}>
+                    {visibleDishes.map((dish) => (
+                      <Button
+                        key={dish.id}
+                        type="button"
+                        fullWidth
+                        variant={dish.id === dishId ? 'contained' : 'outlined'}
+                        aria-pressed={dish.id === dishId}
+                        data-testid="meal-dish-option"
+                        onClick={() => {
+                          setDishId(dish.id);
+                          setVariantId('');
+                          setSelectedLabel(dish.name);
+                          setPickDish(false);
+                        }}
+                        sx={{ justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal' }}
+                      >
+                        {dish.name}
+                      </Button>
+                    ))}
+                  </Stack>
+                )}
+              </>
             )}
             {dishId && variants.length > 0 ? (
               <ChoiceButtons
@@ -257,20 +289,39 @@ export function MealEventForm({
               selected={dinerIds}
               onChange={toggleDiner}
             />
-            <TextField
-              label="Kommentar"
-              value={comment}
-              onChange={(event) => setComment(event.target.value)}
-              fullWidth
-              multiline
-              minRows={2}
-              slotProps={{ htmlInput: { 'data-testid': 'meal-comment', maxLength: 500 } }}
-            />
+            {commentOpen ? (
+              <TextField
+                label="Kommentar"
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                fullWidth
+                multiline
+                minRows={2}
+                helperText="Optional"
+                onFocus={revealField}
+                slotProps={{ htmlInput: { 'data-testid': 'meal-comment', maxLength: 500 } }}
+              />
+            ) : (
+              <Button type="button" variant="text" fullWidth data-testid="meal-comment-toggle" onClick={() => setCommentOpen(true)}>
+                Kommentar hinzufügen
+              </Button>
+            )}
             {error ? <ErrorState message={error} /> : null}
           </Stack>
         ) : null}
       </DialogContent>
-      <DialogActions sx={{ flexDirection: 'column', alignItems: 'stretch', gap: 1, px: 3, pb: 2 }}>
+      <DialogActions
+        sx={{
+          position: 'sticky',
+          bottom: 0,
+          bgcolor: 'background.paper',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          gap: 1,
+          px: 3,
+          pb: 'max(16px, env(safe-area-inset-bottom))',
+        }}
+      >
         <Button
           type="button"
           variant="contained"
@@ -287,6 +338,16 @@ export function MealEventForm({
       </DialogActions>
     </Dialog>
   );
+}
+
+function revealField(event: { currentTarget: HTMLInputElement | HTMLTextAreaElement }) {
+  const target = event.currentTarget;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  window.setTimeout(() => {
+    if (typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    }
+  }, 250);
 }
 
 function memberOptions(

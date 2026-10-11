@@ -135,11 +135,11 @@ KI-Ausfälle dürfen die Gerichteverwaltung und die algorithmischen Vorschläge 
 
 ## 10. Hauptansichten
 
-1. **Startseite:** Mahlzeit, Mitessende, optionaler Freitextwunsch, Vorschlagsaktion.
-2. **Vorschläge:** drei Kandidaten, Begründungen, Varianten, neu würfeln, wählen, abstimmen.
+1. **Startseite:** der heutige Tag mit geplanten Mahlzeiten, Vorschläge mit den Standardwerten Abendessen, heute und angemeldete Person, optionale KI-Eingabe und kompakte Schnellaktionen.
+2. **Vorschläge:** drei Kandidaten, kurze Begründung, Einplanen als Hauptaktion, als gegessen erfassen, neu würfeln und Ausschluss. Abstimmen folgt später.
 3. **Gerichtesammlung:** Suche/Filter, Anlage/Bearbeitung, Varianten, Zutaten, persönliche Bewertungen.
-4. **Wochenkalender:** optional befüllbare Mahlzeitenslots, Status und Änderungen.
-5. **Historie:** tatsächlich gegessene Mahlzeiten, Filter nach Datum/Person/Mahlzeit.
+4. **Wochenplan:** die aktuelle Woche als Tagesliste, heute markiert, geplante Mahlzeiten mit Bestätigen, Bearbeiten, Verschieben und Löschen.
+5. **Historie:** tatsächlich gegessene Mahlzeiten, Filter nach Datum/Person/Mahlzeit. Reste vom Vortag sind ein weiterer Eintrag, keine eigene Planung.
 6. **Familie & Regeln:** Profile, eigene Bewertungen, persönliche und gemeinsame Regeln.
 7. **KI-Eingabe:** kontextabhängig in relevanten Ansichten.
 8. **Kontext-Schnellauswahl:** „Meal Prep für eine Person“ und „Homeoffice für ein Familienmitglied“ als mobil gut erreichbare Vorschlagsfilter.

@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router';
 import { MEAL_TYPE_LABELS } from '../dishes/labels';
-import { ConfirmDialog, ErrorState, LoadingState } from '../dishes/ui';
+import { ConfirmDialog, ErrorState, LoadingState, SuccessSnackbar } from '../dishes/ui';
 import { ApiError } from '../http';
 import { listMembers } from '../recommendations/api';
 import type { Member } from '../recommendations/types';
@@ -27,6 +27,7 @@ export function HistoryPage({ userId }: { userId: string }) {
   const [draft, setDraft] = useState<MealDraft | null>(null);
   const [pendingDelete, setPendingDelete] = useState<MealEvent | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -88,6 +89,7 @@ export function HistoryPage({ userId }: { userId: string }) {
       await createHistory(body);
     }
     setDraft(null);
+    setNotice(draft.mode === 'edit-eaten' ? 'Eintrag gespeichert.' : 'Als gegessen eingetragen.');
     includeDate(body.mealDate);
     setAttempt((current) => current + 1);
   }
@@ -101,6 +103,7 @@ export function HistoryPage({ userId }: { userId: string }) {
     try {
       await deleteHistory(pendingDelete.id);
       setPendingDelete(null);
+      setNotice('Eintrag gelöscht.');
       setAttempt((current) => current + 1);
     } catch (caught) {
       setActionError(caught instanceof ApiError ? caught.message : 'Der Eintrag konnte nicht gelöscht werden.');
@@ -116,7 +119,7 @@ export function HistoryPage({ userId }: { userId: string }) {
           Was haben wir gegessen?
         </Typography>
         <Typography color="text.secondary" sx={{ mt: 1 }}>
-          Nur tatsächlich gegessene Mahlzeiten, die neueste zuerst.
+          Nur tatsächlich gegessene Mahlzeiten, die neueste zuerst. Reste vom Vortag trägst du einfach noch einmal ein.
         </Typography>
       </header>
       <Button
@@ -190,7 +193,24 @@ export function HistoryPage({ userId }: { userId: string }) {
       {error ? <ErrorState message={error} onRetry={() => setAttempt((current) => current + 1)} /> : null}
       {!events && !error ? <LoadingState label="Historie wird geladen …" /> : null}
       {events && events.length === 0 ? (
-        <Typography color="text.secondary">In diesem Zeitraum ist noch nichts eingetragen.</Typography>
+        <Stack spacing={1.5} data-testid="history-empty">
+          <Typography color="text.secondary">In diesem Zeitraum ist noch nichts eingetragen.</Typography>
+          <Button
+            type="button"
+            variant="contained"
+            fullWidth
+            onClick={() =>
+              setDraft({
+                mode: 'eaten',
+                mealDate: todayIso(),
+                mealType: 'ABENDESSEN',
+                dinerIds: [userId],
+              })
+            }
+          >
+            Jetzt nachtragen
+          </Button>
+        </Stack>
       ) : null}
       {events?.map((event) => (
         <Paper key={event.id} variant="outlined" data-testid="history-entry" sx={{ p: 1.5, minWidth: 0 }}>
@@ -220,6 +240,7 @@ export function HistoryPage({ userId }: { userId: string }) {
                   mealDate: event.mealDate,
                   mealType: event.mealType,
                   dishId: event.dishId ?? undefined,
+                  dishName: event.name,
                   variantId: event.variantId,
                   dinerIds: event.participants.flatMap((person) => (person.userId ? [person.userId] : [])),
                   comment: event.comment ?? '',
@@ -236,6 +257,7 @@ export function HistoryPage({ userId }: { userId: string }) {
         </Paper>
       ))}
       <MealEventForm draft={draft} userId={userId} onClose={() => setDraft(null)} onSubmit={save} />
+      <SuccessSnackbar message={notice} onClose={() => setNotice(null)} />
       <ConfirmDialog
         open={pendingDelete !== null}
         title="Eintrag löschen?"

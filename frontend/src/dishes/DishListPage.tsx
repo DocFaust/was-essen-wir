@@ -98,7 +98,7 @@ export function DishListPage() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           fullWidth
-          slotProps={{ htmlInput: { 'data-testid': 'dish-search' } }}
+          slotProps={{ htmlInput: { 'data-testid': 'dish-search', type: 'search', enterKeyHint: 'search' } }}
         />
         <Button type="button" variant="text" fullWidth aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>
           {filtersOpen ? 'Filter ausblenden' : 'Filter'}
@@ -161,7 +161,14 @@ export function DishListPage() {
       {loading ? <LoadingState label="Gerichte werden geladen …" /> : null}
       {error ? <ErrorState message={error} onRetry={() => setRequestId((current) => current + 1)} /> : null}
       {!loading && !error && dishes.length === 0 ? (
-        <Alert severity="info">Noch keine Gerichte. Ein Name genügt für den Anfang.</Alert>
+        <Alert severity="info">
+          <Stack spacing={1.5}>
+            <span>Noch keine Gerichte. Ein Name genügt für den Anfang.</span>
+            <Button component={RouterLink} to="/gerichte/neu" variant="outlined" color="inherit" fullWidth>
+              Gericht anlegen
+            </Button>
+          </Stack>
+        </Alert>
       ) : null}
       {!loading && !error
         ? dishes.map((dish) => (
@@ -171,6 +178,20 @@ export function DishListPage() {
               data-testid="dish-card"
               sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 1.5, minWidth: 0 }}
             >
+              <Button
+                component={RouterLink}
+                to={`/gerichte/${dish.id}`}
+                variant="text"
+                fullWidth
+                sx={{ justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal', px: 0.5 }}
+              >
+                <Typography component="span" sx={{ fontWeight: 700, fontSize: '1.25rem', overflowWrap: 'anywhere' }}>
+                  {dish.name}
+                </Typography>
+              </Button>
+              <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                {subtitle(dish)}
+              </Typography>
               <StarRating
                 label={`Deine Bewertung für ${dish.name}`}
                 value={dish.myRating}
@@ -180,22 +201,6 @@ export function DishListPage() {
                 onClear={() => rate(dish, null)}
                 testId={`list-rating-${dish.id}`}
               />
-              <Button
-                component={RouterLink}
-                to={`/gerichte/${dish.id}`}
-                variant="outlined"
-                fullWidth
-                sx={{ justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal' }}
-              >
-                <Stack sx={{ alignItems: 'flex-start', minWidth: 0 }}>
-                  <Typography component="span" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
-                    {dish.name}
-                  </Typography>
-                  <Typography component="span" variant="body2" color="text.secondary">
-                    {subtitle(dish)}
-                  </Typography>
-                </Stack>
-              </Button>
             </Stack>
           ))
         : null}
@@ -207,7 +212,7 @@ function subtitle(dish: DishSummary): string {
   const parts = [
     dish.mealTypes.map((type) => MEAL_TYPE_LABELS[type as MealType]).join(', '),
     dish.effort ? EFFORT_LABELS[dish.effort] : '',
-    dish.variantNames.join(', '),
+    dish.variantNames.length > 0 ? `Varianten: ${dish.variantNames.join(', ')}` : '',
   ].filter((part) => part.length > 0);
   return parts.length > 0 ? parts.join(' · ') : 'Ohne weitere Angaben';
 }

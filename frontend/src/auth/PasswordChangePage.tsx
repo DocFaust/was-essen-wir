@@ -9,7 +9,7 @@ import { changePassword } from './api';
 import { useAuth } from './AuthProvider';
 
 export function PasswordChangePage() {
-  const { setUser } = useAuth();
+  const { setUser, logout } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
@@ -73,6 +73,9 @@ export function PasswordChangePage() {
       />
       <Button type="submit" variant="contained" fullWidth disabled={saving}>
         Passwort speichern
+      </Button>
+      <Button type="button" variant="outlined" fullWidth onClick={() => void logout()} data-testid="logout">
+        Abmelden
       </Button>
     </Stack>
   );

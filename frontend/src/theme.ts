@@ -37,6 +37,33 @@ export const theme = createTheme({
           textTransform: 'none',
           fontSize: '1rem',
           scrollMarginBottom: '16px',
+          '&:focus-visible': {
+            outline: '3px solid #1b5e20',
+            outlineOffset: '2px',
+          },
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          minWidth: 44,
+          minHeight: 44,
+          '&:focus-visible': {
+            outline: '3px solid #1b5e20',
+            outlineOffset: '2px',
+          },
+        },
+      },
+    },
+    MuiBottomNavigationAction: {
+      styleOverrides: {
+        root: {
+          minWidth: 0,
+          '&:focus-visible': {
+            outline: '3px solid #1b5e20',
+            outlineOffset: '-2px',
+          },
         },
       },
     },
@@ -44,6 +71,14 @@ export const theme = createTheme({
       styleOverrides: {
         body: {
           margin: 0,
+        },
+        '@media (prefers-reduced-motion: reduce)': {
+          '*, *::before, *::after': {
+            animationDuration: '0.01ms !important',
+            animationIterationCount: '1 !important',
+            transitionDuration: '0.01ms !important',
+            scrollBehavior: 'auto !important',
+          },
         },
       },
     },

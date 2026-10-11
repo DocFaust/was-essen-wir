@@ -2,7 +2,7 @@
 
 Selbst gehosteter Familien-Essensplaner für genau eine Familie pro Installation. Die Anwendung läuft im privaten Heimnetz, mobile-first, und kommt ohne öffentliche Registrierung aus.
 
-**Stand Iteration 7:** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Wochenplan und Essenshistorie. Kürzlich gegessene und bereits geplante Gerichte beeinflussen neue Vorschläge. Sichtbar bleiben nur die eigenen Bewertungen. Ein optionaler Essensassistent übersetzt natürlichsprachliche Wünsche; die Auswahl bleibt regelbasiert. Ohne `AI_ENABLED=true` gibt es keine KI-Verbindung. Der Ablauf steht in [`docs/ki-assistent.md`](docs/ki-assistent.md).
+**Stand Iteration 8:** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Wochenplan und Essenshistorie. Die Startseite beantwortet „Was essen wir heute?“ und hält Vorschläge, Einplanen und das Erfassen von Gegessenem mit wenigen Taps erreichbar. Die Navigation ist Heute, Plan, Gerichte, Historie und Mehr. Kürzlich gegessene und bereits geplante Gerichte beeinflussen neue Vorschläge. Sichtbar bleiben nur die eigenen Bewertungen. Ein optionaler Essensassistent übersetzt natürlichsprachliche Wünsche; die Auswahl bleibt regelbasiert und funktioniert auch ohne ihn. Ohne `AI_ENABLED=true` gibt es keine KI-Verbindung. Der Ablauf steht in [`docs/ki-assistent.md`](docs/ki-assistent.md), die UX-Bewertung in [`docs/ux-review.md`](docs/ux-review.md).
 
 ## Voraussetzungen
 

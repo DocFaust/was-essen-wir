@@ -18,7 +18,7 @@ test('plant, isst und berücksichtigt die Historie bei Vorschlägen', async ({ p
   await createDish(page, soup, 'Abendessen');
   const soupId = page.url().split('/').pop() ?? '';
 
-  await page.getByRole('link', { name: 'Plan' }).click();
+  await page.getByRole('link', { name: 'Plan', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Wochenplan' })).toBeVisible();
   await page.getByTestId('plan-next-week').click();
   await page.getByTestId('plan-current-week').click();
@@ -26,6 +26,7 @@ test('plant, isst und berücksichtigt die Historie bei Vorschlägen', async ({ p
   await page.getByTestId('meal-date').fill(tomorrow);
   await page.getByTestId('meal-dish-search').fill(pizza);
   await page.getByTestId('meal-dish-option').filter({ hasText: pizza }).click();
+  await page.getByTestId('meal-comment-toggle').click();
   await page.getByRole('button', { name: 'Salami', exact: true }).click();
   await page.getByRole('button', { name: 'Bea Beispiel', exact: true }).click();
   await page.getByTestId('meal-comment').fill('Für morgen');
@@ -62,12 +63,13 @@ test('plant, isst und berücksichtigt die Historie bei Vorschlägen', async ({ p
   const eatenSoup = page.getByTestId('history-entry').filter({ hasText: soup });
   await expect(eatenSoup).toBeVisible();
   await eatenSoup.getByTestId('history-edit').click();
+  await page.getByTestId('meal-comment-toggle').click();
   await page.getByTestId('meal-comment').fill('Nachgetragen');
   await page.getByTestId('meal-save').click();
   await expect(page.getByTestId('history-entry').filter({ hasText: 'Nachgetragen' })).toBeVisible();
   await expectNoHorizontalScroll(page);
 
-  await page.getByRole('link', { name: 'Start' }).click();
+  await page.getByRole('link', { name: 'Heute' }).click();
   await page.getByRole('button', { name: 'Abendessen', exact: true }).click();
   await page.getByTestId('show-suggestions').click();
   await expect(page.getByTestId('suggestion-card').first()).toBeVisible();
@@ -81,7 +83,7 @@ test('plant, isst und berücksichtigt die Historie bei Vorschlägen', async ({ p
   await page.getByTestId('confirm-delete').click();
   await expect(page.getByTestId('history-entry').filter({ hasText: soup })).toHaveCount(0);
 
-  await page.getByRole('link', { name: 'Start' }).click();
+  await page.getByRole('link', { name: 'Heute' }).click();
   await page.getByTestId('show-suggestions').click();
   await expect(page.getByTestId('suggestion-card').first()).toBeVisible();
   const after = await recommendationReasons(page, [soupId, pizzaId]);
@@ -126,7 +128,7 @@ async function login(page: Page) {
   await page.getByTestId('login-username').fill('Ada');
   await page.getByTestId('login-password').fill(adminPassword);
   await page.getByTestId('login-submit').click();
-  await expect(page.getByRole('heading', { name: 'Was essen wir?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Was essen wir heute?' })).toBeVisible();
 }
 
 async function createDish(page: Page, name: string, meal: string) {

@@ -9,9 +9,9 @@ test('fragt den Assistenten und plant einen Vorschlag', async ({ page }) => {
 
   await login(page);
   await createDish(page, soup);
-  await page.getByRole('link', { name: 'Start' }).click();
+  await page.getByRole('link', { name: 'Heute' }).click();
   await expect(page.getByTestId('ai-assistant')).toBeVisible();
-  await page.getByTestId('ai-message').fill('Heute Abend etwas Schnelles');
+  await page.getByTestId('ai-message').fill('Heute Abend etwas Schnelles wie Assistentensuppe');
   await page.getByTestId('ai-submit').click();
 
   await expect(page.getByTestId('ai-reply')).toContainText('Abendessen');
@@ -25,7 +25,7 @@ test('fragt den Assistenten und plant einen Vorschlag', async ({ page }) => {
   await page.getByTestId('meal-save').click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
-  await page.getByRole('link', { name: 'Plan' }).click();
+  await page.getByRole('link', { name: 'Plan', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Wochenplan' })).toBeVisible();
   await expect(page.getByTestId('plan-entry').filter({ hasText: soup })).toBeVisible();
   await expectNoHorizontalScroll(page);
@@ -37,7 +37,7 @@ async function login(page: Page) {
   await page.getByTestId('login-username').fill('Ada');
   await page.getByTestId('login-password').fill(adminPassword);
   await page.getByTestId('login-submit').click();
-  await expect(page.getByRole('heading', { name: 'Was essen wir?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Was essen wir heute?' })).toBeVisible();
 }
 
 async function createDish(page: Page, name: string) {

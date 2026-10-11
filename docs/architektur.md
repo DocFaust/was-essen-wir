@@ -48,3 +48,7 @@ Planung und Historie sind Zustände derselben Mahlzeit `meal_event`. Bestätigen
 ## Iteration 7
 
 Der Essensassistent ist eine optionale Schicht vor dem bestehenden Empfehlungsdienst. `POST /api/ai/recommendations` verlangt eine Sitzung und CSRF. Das Modell liefert nur ein versioniertes JSON mit Mahlzeit, Datum, genannten Namen, Präferenzen und Katalogbegriffen. Namen und Katalog löst das Backend lokal auf. Bewertungen, Historie und der Katalog gehen nicht an den Provider. `AI_ENABLED=false` lässt die Anwendung ohne externe Verbindung starten. Ollama kann über eine LAN-Adresse auf einem anderen Rechner liegen. Die OpenAI-Chat-Completions-Schnittstelle wird nur vom Backend aufgerufen. Der Ablauf steht in [`ki-assistent.md`](ki-assistent.md).
+
+## Iteration 8
+
+Die Oberfläche priorisiert die täglichen Aufgaben, ohne neue Fachendpunkte. Die Startseite lädt die Planung des lokalen Tages über das bestehende `GET /api/meal-plans`. Einplanen, Bestätigen und Nachtragen verwenden weiter `/api/meal-plans` und `/api/meal-history`. Die Navigation hat fünf Ziele: Heute, Plan, Gerichte, Historie und Mehr. Profil, Familie und Abmelden liegen unter Mehr. Auf schmalen Viewports sitzt die Leiste unten im Layoutfluss, ab der MUI-Breakpoint-Grenze `md` darüber, damit sie den Inhalt nicht überdeckt. Die Gerichtssuche bleibt eine explizite Anfrage und lädt nicht bei jedem Tastendruck. Die KI bleibt optional und steht unter den regelbasierten Vorschlägen. Die Bewertung steht in [`ux-review.md`](ux-review.md).

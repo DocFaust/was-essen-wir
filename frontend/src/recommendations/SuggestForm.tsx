@@ -1,14 +1,17 @@
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../http';
 import { MEAL_TYPE_LABELS, MEAL_TYPES } from '../dishes/labels';
 import type { MealType } from '../dishes/types';
-import { ChoiceButtons, ErrorState, LoadingState } from '../dishes/ui';
+import { ChoiceButtons, ErrorState, LoadingState, SuccessSnackbar } from '../dishes/ui';
 import { listMembers, recommend } from './api';
 import { SuggestionCard } from './SuggestionCard';
 import type { Member, RecommendationResponse } from './types';
@@ -22,7 +25,7 @@ type ExcludedDish = {
   name: string;
 };
 
-export function SuggestForm({ userId }: { userId: string }) {
+export function SuggestForm({ userId, onRecorded }: { userId: string; onRecorded?: () => void }) {
   const [attempt, setAttempt] = useState(0);
   const [members, setMembers] = useState<Member[] | null>(null);
   const [membersError, setMembersError] = useState<string | null>(null);
@@ -36,6 +39,9 @@ export function SuggestForm({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mealDraft, setMealDraft] = useState<MealDraft | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const requestId = useRef(0);
+  const inFlight = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -61,10 +67,18 @@ export function SuggestForm({ userId }: { userId: string }) {
   }, [attempt, userId]);
 
   const selectedDiners = dinerIds ?? [];
+  const activePreferences = [preferSimple, preferHomeOffice, preferMealPrep].filter(Boolean).length;
 
   async function showSuggestions(nextExcluded: ExcludedDish[]) {
+    if (inFlight.current || selectedDiners.length === 0) {
+      return;
+    }
+    const id = requestId.current + 1;
+    requestId.current = id;
+    inFlight.current = true;
     setLoading(true);
     setError(null);
+    setResult(null);
     setExcluded(nextExcluded);
     try {
       const response = await recommend({
@@ -76,11 +90,20 @@ export function SuggestForm({ userId }: { userId: string }) {
         excludedDishIds: nextExcluded.map((dish) => dish.id),
         seed: nextSeed(),
       });
+      if (id !== requestId.current) {
+        return;
+      }
       setResult(response);
     } catch (caught) {
+      if (id !== requestId.current) {
+        return;
+      }
       setError(caught instanceof ApiError ? caught.message : 'Die Vorschläge konnten nicht berechnet werden.');
     } finally {
-      setLoading(false);
+      if (id === requestId.current) {
+        inFlight.current = false;
+        setLoading(false);
+      }
     }
   }
 
@@ -99,9 +122,13 @@ export function SuggestForm({ userId }: { userId: string }) {
   }
 
   return (
-    <Stack spacing={2.5} data-testid="suggest-form">
+    <Stack spacing={2} data-testid="suggest-form">
+      <Typography variant="h2" sx={{ fontSize: '1.25rem' }}>
+        Vorschläge
+      </Typography>
       <ChoiceButtons
         label="Mahlzeit"
+        layout="wrap"
         options={MEAL_TYPES.map((type) => ({ value: type, label: MEAL_TYPE_LABELS[type] }))}
         selected={mealType}
         onChange={setMealType}
@@ -117,26 +144,23 @@ export function SuggestForm({ userId }: { userId: string }) {
           Mindestens eine Person muss ausgewählt sein.
         </Typography>
       ) : null}
-      <Stack spacing={0.5} component="fieldset" sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}>
-        <Typography component="legend" variant="body2" color="text.secondary">
-          Optionaler Kontext
-        </Typography>
-        <PreferenceSwitch
-          label="Einfaches oder schnelles Essen"
-          checked={preferSimple}
-          onChange={setPreferSimple}
-        />
-        <PreferenceSwitch
-          label="Für Homeoffice geeignet"
-          checked={preferHomeOffice}
-          onChange={setPreferHomeOffice}
-        />
-        <PreferenceSwitch
-          label="Für Meal Prep geeignet"
-          checked={preferMealPrep}
-          onChange={setPreferMealPrep}
-        />
-      </Stack>
+      <Accordion disableGutters elevation={0} sx={{ border: 1, borderColor: 'divider', '&:before': { display: 'none' } }}>
+        <AccordionSummary expandIcon={<span aria-hidden="true">▾</span>} aria-controls="suggest-preferences" id="suggest-preferences-header">
+          <Typography component="span">
+            Weitere Einstellungen{activePreferences > 0 ? ` (${activePreferences})` : ''}
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails id="suggest-preferences">
+          <Stack spacing={0.5} component="fieldset" sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}>
+            <Typography component="legend" variant="body2" color="text.secondary">
+              Seltener gebraucht
+            </Typography>
+            <PreferenceSwitch label="Einfaches oder schnelles Essen" checked={preferSimple} onChange={setPreferSimple} />
+            <PreferenceSwitch label="Für Homeoffice geeignet" checked={preferHomeOffice} onChange={setPreferHomeOffice} />
+            <PreferenceSwitch label="Für Meal Prep geeignet" checked={preferMealPrep} onChange={setPreferMealPrep} />
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
       <Button
         type="button"
         variant="contained"
@@ -145,7 +169,7 @@ export function SuggestForm({ userId }: { userId: string }) {
         data-testid="show-suggestions"
         onClick={() => void showSuggestions(excluded)}
       >
-        {loading ? 'Wird berechnet …' : 'Vorschläge anzeigen'}
+        {loading ? 'Wird berechnet …' : 'Was essen wir?'}
       </Button>
       {error ? <ErrorState message={error} onRetry={() => void showSuggestions(excluded)} /> : null}
       {loading ? <LoadingState label="Vorschläge werden berechnet …" /> : null}
@@ -157,14 +181,7 @@ export function SuggestForm({ userId }: { userId: string }) {
                 ? `${excluded[0].name} ist ausgeschlossen.`
                 : `${excluded.length} Gerichte sind ausgeschlossen.`}
             </span>
-            <Button
-              type="button"
-              color="inherit"
-              variant="outlined"
-              fullWidth
-              disabled={loading}
-              onClick={() => void showSuggestions([])}
-            >
+            <Button type="button" color="inherit" variant="outlined" fullWidth disabled={loading} onClick={() => void showSuggestions([])}>
               Ausschlüsse aufheben
             </Button>
           </Stack>
@@ -177,11 +194,16 @@ export function SuggestForm({ userId }: { userId: string }) {
               {result.explanation}
             </Alert>
           ) : null}
+          {result.suggestions.length === 0 && !result.explanation ? (
+            <Alert severity="info" data-testid="suggestion-explanation">
+              Keine passenden Gerichte. Passe Mahlzeit oder Mitessende an, oder lege ein Gericht an.
+            </Alert>
+          ) : null}
           {result.suggestions.map((suggestion) => (
             <SuggestionCard
               key={`${suggestion.dishId}:${suggestion.variantId ?? 'base'}`}
               suggestion={suggestion}
-              disabled={false}
+              disabled={loading}
               onExclude={() =>
                 void showSuggestions([
                   ...excluded.filter((dish) => dish.id !== suggestion.dishId),
@@ -194,6 +216,7 @@ export function SuggestForm({ userId }: { userId: string }) {
                   mealDate: todayIso(),
                   mealType,
                   dishId: suggestion.dishId,
+                  dishName: suggestion.name,
                   variantId: suggestion.variantId,
                   dinerIds: selectedDiners,
                 })
@@ -204,6 +227,7 @@ export function SuggestForm({ userId }: { userId: string }) {
                   mealDate: todayIso(),
                   mealType,
                   dishId: suggestion.dishId,
+                  dishName: suggestion.name,
                   variantId: suggestion.variantId,
                   dinerIds: selectedDiners,
                 })
@@ -211,13 +235,7 @@ export function SuggestForm({ userId }: { userId: string }) {
             />
           ))}
           {result.suggestions.length > 0 ? (
-            <Button
-              type="button"
-              variant="outlined"
-              fullWidth
-              data-testid="suggest-again"
-              onClick={() => void showSuggestions(excluded)}
-            >
+            <Button type="button" variant="outlined" fullWidth data-testid="suggest-again" onClick={() => void showSuggestions(excluded)}>
               Neu vorschlagen
             </Button>
           ) : null}
@@ -230,12 +248,16 @@ export function SuggestForm({ userId }: { userId: string }) {
         onSubmit={async (body: MealEventWrite) => {
           if (mealDraft?.mode === 'plan') {
             await createPlan(body);
+            setNotice('Eingeplant.');
           } else {
             await createHistory(body);
+            setNotice('Als gegessen eingetragen.');
           }
           setMealDraft(null);
+          onRecorded?.();
         }}
       />
+      <SuccessSnackbar message={notice} onClose={() => setNotice(null)} />
     </Stack>
   );
 }

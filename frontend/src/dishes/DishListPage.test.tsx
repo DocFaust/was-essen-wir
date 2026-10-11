@@ -37,8 +37,11 @@ test('zeigt Gerichte und sucht nach dem Namen', async () => {
   renderPage();
 
   expect(await screen.findByRole('link', { name: /Pizza/ })).toBeInTheDocument();
+  expect(screen.getByText(/Varianten: Salami/)).toBeInTheDocument();
   await userEvent.type(screen.getByTestId('dish-search'), 'Pizza');
+  expect(fetchMock).toHaveBeenCalledTimes(1);
   await userEvent.click(screen.getByRole('button', { name: 'Suchen' }));
+  expect(fetchMock).toHaveBeenCalledTimes(2);
 
   expect(fetchMock).toHaveBeenLastCalledWith(
     '/api/dishes?q=Pizza',

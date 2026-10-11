@@ -4,9 +4,9 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MEAL_TYPE_LABELS } from '../dishes/labels';
-import { ErrorState, LoadingState } from '../dishes/ui';
+import { ErrorState, LoadingState, SuccessSnackbar } from '../dishes/ui';
 import { ApiError } from '../http';
 import { createHistory, createPlan } from '../meals/api';
 import { MealEventForm } from '../meals/MealEventForm';
@@ -15,7 +15,7 @@ import { aiRecommend, aiStatus, listMembers } from './api';
 import { SuggestionCard } from './SuggestionCard';
 import type { AiRecommendationResponse, AiStatus, Member, Suggestion } from './types';
 
-export function AiAssistant({ userId }: { userId: string }) {
+export function AiAssistant({ userId, onRecorded }: { userId: string; onRecorded?: () => void }) {
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [message, setMessage] = useState('');
@@ -24,6 +24,8 @@ export function AiAssistant({ userId }: { userId: string }) {
   const [result, setResult] = useState<AiRecommendationResponse | null>(null);
   const [excluded, setExcluded] = useState<string[]>([]);
   const [mealDraft, setMealDraft] = useState<MealDraft | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const submitting = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -43,38 +45,19 @@ export function AiAssistant({ userId }: { userId: string }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!status?.enabled) {
-      return;
-    }
-    let active = true;
-    listMembers()
-      .then((loaded) => {
-        if (active) {
-          setMembers(loaded);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setMembers([]);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [status?.enabled]);
-
   if (!status?.enabled) {
     return null;
   }
 
   async function submit() {
     const text = message.trim();
-    if (!text || loading) {
+    if (!text || submitting.current) {
       return;
     }
+    submitting.current = true;
     setLoading(true);
     setError(null);
+    setResult(null);
     setExcluded([]);
     try {
       setResult(await aiRecommend(text));
@@ -82,8 +65,25 @@ export function AiAssistant({ userId }: { userId: string }) {
       setResult(null);
       setError(caught instanceof ApiError ? caught.message : 'Der Essensassistent ist gerade nicht erreichbar.');
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
+  }
+
+  async function openDraft(suggestion: Suggestion, mode: 'plan' | 'eaten') {
+    if (!result) {
+      return;
+    }
+    let known = members;
+    if (known.length === 0) {
+      try {
+        known = await listMembers();
+        setMembers(known);
+      } catch {
+        known = [];
+      }
+    }
+    setMealDraft(draftFor(result, suggestion, known, userId, mode));
   }
 
   function reset() {
@@ -98,11 +98,11 @@ export function AiAssistant({ userId }: { userId: string }) {
   return (
     <Stack spacing={2} data-testid="ai-assistant" sx={{ minWidth: 0 }}>
       <Box>
-        <Typography variant="h2" sx={{ fontSize: '1.25rem' }}>
+        <Typography variant="h2" sx={{ fontSize: '1.15rem' }}>
           Frag den Essensassistenten
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          {privacyNote(status.provider)}
+          Optional. Die Vorschläge darüber bleiben der normale Weg. {privacyNote(status.provider)}
         </Typography>
       </Box>
       <Box
@@ -119,6 +119,7 @@ export function AiAssistant({ userId }: { userId: string }) {
             label="Was möchtest du heute essen?"
             value={message}
             onChange={(event) => setMessage(event.target.value)}
+            placeholder="Heute Abend etwas Schnelles, aber keine Pizza."
             slotProps={{ htmlInput: { 'data-testid': 'ai-message', maxLength: 500, enterKeyHint: 'go' } }}
           />
           <Button type="submit" variant="contained" fullWidth disabled={loading || message.trim().length === 0} data-testid="ai-submit">
@@ -134,7 +135,7 @@ export function AiAssistant({ userId }: { userId: string }) {
       {error ? (
         <Stack spacing={1.5} data-testid="ai-error">
           <ErrorState message={error} onRetry={() => void submit()} />
-          <Typography variant="body2">Die gewohnte Vorschlagsauswahl darunter funktioniert weiterhin.</Typography>
+          <Typography variant="body2">Die gewohnte Vorschlagsauswahl darüber funktioniert weiterhin.</Typography>
           <Button type="button" variant="text" fullWidth onClick={reset}>
             Neue Anfrage
           </Button>
@@ -158,8 +159,8 @@ export function AiAssistant({ userId }: { userId: string }) {
               suggestion={suggestion}
               disabled={false}
               onExclude={() => setExcluded((current) => [...current, suggestion.dishId])}
-              onPlan={() => setMealDraft(draftFor(result, suggestion, members, userId, 'plan'))}
-              onEaten={() => setMealDraft(draftFor(result, suggestion, members, userId, 'eaten'))}
+              onPlan={() => void openDraft(suggestion, 'plan')}
+              onEaten={() => void openDraft(suggestion, 'eaten')}
             />
           ))}
           <Button type="button" variant="outlined" fullWidth onClick={reset} data-testid="ai-new-request">
@@ -174,12 +175,16 @@ export function AiAssistant({ userId }: { userId: string }) {
         onSubmit={async (body: MealEventWrite) => {
           if (mealDraft?.mode === 'plan') {
             await createPlan(body);
+            setNotice('Eingeplant.');
           } else {
             await createHistory(body);
+            setNotice('Als gegessen eingetragen.');
           }
           setMealDraft(null);
+          onRecorded?.();
         }}
       />
+      <SuccessSnackbar message={notice} onClose={() => setNotice(null)} />
     </Stack>
   );
 }
@@ -241,6 +246,7 @@ function draftFor(
     mealDate: result.criteria.date,
     mealType: result.criteria.mealType,
     dishId: suggestion.dishId,
+    dishName: suggestion.name,
     variantId: suggestion.variantId,
     dinerIds: dinerIds.length > 0 ? dinerIds : [userId],
   };

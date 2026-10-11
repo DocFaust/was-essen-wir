@@ -1,5 +1,5 @@
 import { ThemeProvider } from '@mui/material/styles';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, expect, test, vi } from 'vitest';
@@ -132,6 +132,7 @@ test('plant eine Mahlzeit mit Variante und Mitessenden, ändert und löscht sie'
   await userEvent.click(await screen.findByRole('button', { name: 'Pizza' }));
   await userEvent.click(await screen.findByRole('button', { name: 'Salami' }));
   await userEvent.click(screen.getByRole('button', { name: 'Bea Beispiel' }));
+  await userEvent.click(screen.getByTestId('meal-comment-toggle'));
   await userEvent.type(screen.getByTestId('meal-comment'), 'Knusprig');
   await userEvent.click(screen.getByTestId('meal-save'));
 
@@ -171,6 +172,22 @@ test('bestätigt eine Planung als gegessen', async () => {
   expect(events[0]?.status).toBe('EATEN');
 });
 
+test('verschiebt eine Planung innerhalb der Woche', async () => {
+  const events = [event()];
+  const fetchMock = mockApi(events);
+  vi.stubGlobal('fetch', fetchMock);
+  renderPlan();
+  await userEvent.click(await screen.findByTestId('plan-move'));
+  expect(await screen.findByRole('heading', { name: 'Mahlzeit verschieben' })).toBeInTheDocument();
+  const next = isoDate(addDays(startOfWeek(new Date()), 1));
+  fireEvent.change(screen.getByTestId('meal-date'), { target: { value: next } });
+  await userEvent.click(screen.getByTestId('meal-save'));
+  expect(await screen.findByTestId('success-notice')).toHaveTextContent('Verschoben.');
+  const put = fetchMock.mock.calls.find((call) => String(call[0]).includes('/api/meal-plans/') && call[1]?.method === 'PUT');
+  const body = JSON.parse(String(put?.[1]?.body)) as { mealDate: string };
+  expect(body.mealDate).toBe(next);
+});
+
 test('zeigt einen Ladefehler und erlaubt einen neuen Versuch', async () => {
   let fail = true;
   vi.stubGlobal(
@@ -190,7 +207,7 @@ test('zeigt einen Ladefehler und erlaubt einen neuen Versuch', async () => {
   renderPlan();
   expect(await screen.findByText('Die Planung ist gerade nicht erreichbar.')).toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
-  expect(await screen.findAllByText('Noch offen')).not.toHaveLength(0);
+  expect(await screen.findAllByText('Noch nichts geplant')).not.toHaveLength(0);
 });
 
 function mockApi(events: MealEvent[]) {
