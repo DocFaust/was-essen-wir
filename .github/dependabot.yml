@@ -65,7 +65,7 @@ updates:
           - version-update:semver-major
 
   - package-ecosystem: docker-compose
-    directory: /deploy
+    directory: /
     schedule:
       interval: weekly
     ignore:

@@ -19,7 +19,7 @@ services:
 
   backend:
     build:
-      context: ../backend
+      context: ./backend
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-wasessenwir}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-wasessenwir}
@@ -52,7 +52,7 @@ services:
 
   frontend:
     build:
-      context: ../frontend
+      context: ./frontend
     ports:
       - "${APP_PORT:-8080}:80"
     depends_on:

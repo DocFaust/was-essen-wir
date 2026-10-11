@@ -1,6 +1,6 @@
 # UX-Bewertung – Iteration 8
 
-Stand: 11.10.2026. Bewertet wurde die Oberfläche nach Iteration 7, also mit Gerichten, Anmeldung, Bewertungen, regelbasierten Vorschlägen, Wochenplan, Historie und optionalem Assistenten. Compose-Dateien liegen auf `main` unter `deploy/`, nicht im Projektroot. Diese Iteration ändert keine Fachendpunkte.
+Stand: 11.10.2026. Bewertet wurde die Oberfläche nach Iteration 7, also mit Gerichten, Anmeldung, Bewertungen, regelbasierten Vorschlägen, Wochenplan, Historie und optionalem Assistenten. Compose-Dateien liegen im Projektroot. Diese Iteration ändert keine Fachendpunkte.
 
 ## 1. Identifizierte UX-Probleme
 
