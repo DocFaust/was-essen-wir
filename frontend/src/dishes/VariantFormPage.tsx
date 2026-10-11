@@ -4,12 +4,12 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router';
 import { ApiError, createVariant, getDish, updateVariant } from './api';
 import { EFFORTS, EFFORT_LABELS, SUITABILITY_SETTING_LABELS, emptyToNull } from './labels';
 import type { DishDetail, DishVariant, Effort, SuitabilitySetting, VariantWrite } from './types';
-import { ChoiceButtons, ErrorState, LoadingState, NameListEditor } from './ui';
+import { ChoiceButtons, ErrorState, LoadingState, NameListEditor, StickyActions } from './ui';
 
 type FormState = {
   name: string;
@@ -88,6 +88,7 @@ function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVarian
   const [form, setForm] = useState<FormState>(() => (variant ? fromVariant(variant) : EMPTY_FORM));
   const [detailsOpen, setDetailsOpen] = useState(Boolean(variant));
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [message, setMessage] = useState<string | null>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -95,11 +96,15 @@ function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVarian
   }
 
   async function save() {
+    if (savingRef.current) {
+      return;
+    }
     const name = form.name.trim();
     if (!name) {
       setMessage('Der Name ist erforderlich.');
       return;
     }
+    savingRef.current = true;
     setSaving(true);
     setMessage(null);
     const body = toWrite(form);
@@ -110,6 +115,7 @@ function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVarian
       navigate(`/gerichte/${saved.id}`, { state: { notice: 'Variante gespeichert.' } });
     } catch (caught) {
       setMessage(caught instanceof ApiError ? caught.message : 'Die Variante konnte nicht gespeichert werden.');
+      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -221,12 +227,14 @@ function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVarian
           />
         </Stack>
       ) : null}
-      <Button type="submit" variant="contained" fullWidth disabled={saving} data-testid="save-variant">
-        {saving ? 'Wird gespeichert …' : 'Speichern'}
-      </Button>
-      <Button component={RouterLink} to={`/gerichte/${dish.id}`} variant="text" fullWidth>
-        Abbrechen
-      </Button>
+      <StickyActions>
+        <Button type="submit" variant="contained" fullWidth disabled={saving} data-testid="save-variant">
+          {saving ? 'Wird gespeichert …' : 'Speichern'}
+        </Button>
+        <Button component={RouterLink} to={`/gerichte/${dish.id}`} variant="text" fullWidth>
+          Abbrechen
+        </Button>
+      </StickyActions>
     </Stack>
   );
 }

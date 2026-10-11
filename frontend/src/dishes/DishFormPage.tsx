@@ -2,12 +2,12 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router';
 import { ApiError, createDish, getDish, updateDish } from './api';
 import { EFFORTS, EFFORT_LABELS, MEAL_TYPES, MEAL_TYPE_LABELS, SUITABILITY_LABELS, emptyToNull } from './labels';
 import type { DishDetail, DishWrite, Effort, MealType, Suitability } from './types';
-import { ChoiceButtons, ConfirmDialog, ErrorState, LoadingState, NameListEditor } from './ui';
+import { ChoiceButtons, ConfirmDialog, ErrorState, LoadingState, NameListEditor, StickyActions } from './ui';
 
 type FormState = {
   name: string;
@@ -85,6 +85,7 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
   const [form, setForm] = useState<FormState>(() => (initial ? fromDish(initial) : EMPTY_FORM));
   const [detailsOpen, setDetailsOpen] = useState(Boolean(initial));
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [message, setMessage] = useState<string | null>(null);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
 
@@ -93,11 +94,15 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
   }
 
   async function save(confirmDuplicate: boolean) {
+    if (savingRef.current) {
+      return;
+    }
     const name = form.name.trim();
     if (!name) {
       setMessage('Der Name ist erforderlich.');
       return;
     }
+    savingRef.current = true;
     setSaving(true);
     setMessage(null);
     const body = toWrite(form, confirmDuplicate);
@@ -110,6 +115,7 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
       } else {
         setMessage(caught instanceof ApiError ? caught.message : 'Das Gericht konnte nicht gespeichert werden.');
       }
+      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -229,12 +235,14 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
           />
         </Stack>
       ) : null}
-      <Button type="submit" variant="contained" fullWidth disabled={saving} data-testid="save-dish">
-        {saving ? 'Wird gespeichert …' : 'Speichern'}
-      </Button>
-      <Button component={RouterLink} to={dishId ? `/gerichte/${dishId}` : '/gerichte'} variant="text" fullWidth>
-        Abbrechen
-      </Button>
+      <StickyActions>
+        <Button type="submit" variant="contained" fullWidth disabled={saving} data-testid="save-dish">
+          {saving ? 'Wird gespeichert …' : 'Speichern'}
+        </Button>
+        <Button component={RouterLink} to={dishId ? `/gerichte/${dishId}` : '/gerichte'} variant="text" fullWidth>
+          Abbrechen
+        </Button>
+      </StickyActions>
       <ConfirmDialog
         open={duplicateOpen}
         title="Name schon vergeben"

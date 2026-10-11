@@ -208,7 +208,7 @@ Bei Ollama verlässt die Anfrage das Backend in Richtung des konfigurierten Serv
 
 ## Fehler und Oberfläche
 
-Die Startseite zeigt „Frag den Essensassistenten“ nur, wenn der Status `enabled` ist. Die klassische Auswahl bleibt darunter nutzbar. Die Oberfläche zeigt die kurze Antwort, die tatsächlich verwendeten Kriterien und die vorhandenen Gerichtskarten. Einplanen und als gegessen erfassen verwenden Datum, Mahlzeit und aufgelöste Mitessende aus den Kriterien.
+Die Startseite zeigt „Frag den Essensassistenten“ nur, wenn der Status `enabled` ist, und zwar unter der regelbasierten Auswahl. Die klassische Auswahl bleibt darüber vollständig nutzbar. Die Oberfläche zeigt die kurze Antwort, die tatsächlich verwendeten Kriterien und die vorhandenen Gerichtskarten. Einplanen und als gegessen erfassen verwenden Datum, Mahlzeit und aufgelöste Mitessende aus den Kriterien. Die Mitessenden für diese Übernahme lädt die Oberfläche erst, wenn jemand einen Vorschlag übernimmt.
 
 Technische Fehler nennen keine Adressen, Schlüssel oder Stacktraces. „Erneut versuchen“ sendet dieselbe Anfrage einmal erneut, „Neue Anfrage“ leert das Formular.
 

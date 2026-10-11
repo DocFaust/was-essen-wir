@@ -51,6 +51,12 @@ function routeFetch(routes: Record<string, () => Response | Promise<Response>>) 
     if (url.includes('/api/members')) {
       return jsonResponse([{ id: admin.id, displayName: admin.displayName }]);
     }
+    if (url.includes('/api/meal-plans')) {
+      return jsonResponse([]);
+    }
+    if (url.includes('/api/ai/status')) {
+      return jsonResponse({ enabled: false, provider: null });
+    }
     const match = Object.entries(routes).find(([path]) => url.includes(path));
     if (!match) {
       return problem('Unerwartete Anfrage', 500);
@@ -76,7 +82,7 @@ test('zeigt die Startseite nach der Anmeldung', async () => {
 
   renderApp();
 
-  expect(await screen.findByRole('heading', { name: 'Was essen wir?' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Was essen wir heute?' })).toBeInTheDocument();
   expect(screen.getByTestId('current-user')).toHaveTextContent('Ada Lovelace');
 });
 
@@ -95,6 +101,7 @@ test('zeigt den Ladezustand, bis das Backend antwortet', async () => {
   );
 
   renderApp();
+  await userEvent.click(await screen.findByRole('link', { name: 'Mehr' }));
 
   expect(await screen.findByTestId('backend-status')).toHaveTextContent('Verbindung wird geprüft');
   resolveStatus(jsonResponse({ status: 'UP', application: 'was-essen-wir' }));
@@ -112,6 +119,7 @@ test('zeigt eine erfolgreiche Backend-Verbindung', async () => {
   );
 
   renderApp();
+  await userEvent.click(await screen.findByRole('link', { name: 'Mehr' }));
 
   expect(await screen.findByText('Backend erreichbar (was-essen-wir)')).toBeInTheDocument();
 });
@@ -129,6 +137,7 @@ test('zeigt eine verständliche Meldung, wenn das Backend nicht erreichbar ist',
   );
 
   renderApp();
+  await userEvent.click(await screen.findByRole('link', { name: 'Mehr' }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Das Backend ist gerade nicht erreichbar');
 });
@@ -151,6 +160,7 @@ test('prüft die Verbindung nach einem Fehler erneut', async () => {
   );
 
   renderApp();
+  await userEvent.click(await screen.findByRole('link', { name: 'Mehr' }));
 
   expect(await screen.findByRole('alert')).toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: 'Erneut prüfen' }));
@@ -228,8 +238,9 @@ test('meldet einen Benutzer an und wieder ab', async () => {
   await userEvent.type(screen.getByTestId('login-username'), 'ada');
   await userEvent.type(screen.getByTestId('login-password'), 'ein-langes-passwort');
   await userEvent.click(screen.getByTestId('login-submit'));
-  expect(await screen.findByRole('heading', { name: 'Was essen wir?' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Familie' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Was essen wir heute?' })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('link', { name: 'Mehr' }));
+  expect(await screen.findByRole('link', { name: 'Familie' })).toBeInTheDocument();
   await userEvent.click(screen.getByTestId('logout'));
   expect(await screen.findByRole('heading', { name: 'Anmelden' })).toBeInTheDocument();
   expect(screen.getByRole('alert')).toHaveTextContent('Du bist abgemeldet.');
@@ -267,7 +278,7 @@ test('versteckt die Administration für Familienmitglieder', async () => {
 
   expect(await screen.findByText('Diese Seite ist nur für die Administration.')).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Familie' })).not.toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Profil' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Mehr' })).toBeInTheDocument();
 });
 
 test('legt ein Familienmitglied an', async () => {
@@ -332,6 +343,28 @@ test('ändert den eigenen Anzeigenamen', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Anzeigename speichern' }));
   expect(await screen.findByText('Der Anzeigename wurde gespeichert.')).toBeInTheDocument();
   expect(screen.getByTestId('current-user')).toHaveTextContent('Ada Neu');
+});
+
+test('hebt den aktiven Bereich in der Navigation hervor', async () => {
+  vi.stubGlobal(
+    'fetch',
+    routeFetch({
+      '/api/setup/status': () => jsonResponse({ setupRequired: false }),
+      '/api/auth/me': () => jsonResponse(admin),
+      '/api/status': () => jsonResponse({ status: 'UP', application: 'was-essen-wir' }),
+    }),
+  );
+
+  renderApp();
+
+  expect(await screen.findByRole('link', { name: 'Heute' })).toHaveClass('Mui-selected');
+  await userEvent.click(screen.getByRole('link', { name: 'Plan' }));
+  expect(await screen.findByRole('heading', { name: 'Wochenplan' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Plan' })).toHaveClass('Mui-selected');
+  await userEvent.click(screen.getByRole('link', { name: 'Mehr' }));
+  expect(await screen.findByRole('heading', { name: 'Mehr' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Familie' })).toBeInTheDocument();
+  expect(screen.getByTestId('logout')).toBeInTheDocument();
 });
 
 test('leitet bei abgelaufener Sitzung zur Anmeldung', async () => {

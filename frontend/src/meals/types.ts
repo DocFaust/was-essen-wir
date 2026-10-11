@@ -33,11 +33,12 @@ export type MealEventWrite = {
 };
 
 export type MealDraft = {
-  mode: 'plan' | 'eaten' | 'edit-plan' | 'edit-eaten';
+  mode: 'plan' | 'eaten' | 'edit-plan' | 'edit-eaten' | 'move-plan';
   eventId?: string;
   mealDate: string;
   mealType: MealType;
   dishId?: string;
+  dishName?: string;
   variantId?: string | null;
   dinerIds: string[];
   comment?: string;

@@ -28,9 +28,10 @@ test('richtet die Familie ein und schützt Gerichte nach dem Abmelden', async ({
   await page.getByTestId('login-username').fill('Ada');
   await page.getByTestId('login-password').fill(adminPassword);
   await page.getByTestId('login-submit').click();
-  await expect(page.getByRole('heading', { name: 'Was essen wir?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Was essen wir heute?' })).toBeVisible();
   await expect(page.getByTestId('current-user')).toHaveText('Ada Lovelace');
 
+  await page.getByRole('link', { name: 'Mehr' }).click();
   await page.getByRole('link', { name: 'Familie' }).click();
   await page.getByTestId('new-member').click();
   await page.getByTestId('member-username').fill('Bea');
@@ -40,6 +41,7 @@ test('richtet die Familie ein und schützt Gerichte nach dem Abmelden', async ({
   await expect(page.getByText('Bea Beispiel', { exact: true })).toBeVisible();
   await expectNoHorizontalScroll(page);
 
+  await page.getByRole('link', { name: 'Mehr' }).click();
   await page.getByTestId('logout').click();
   await expect(page.getByRole('heading', { name: 'Anmelden' })).toBeVisible();
   await page.getByTestId('login-username').fill('Bea');
@@ -92,6 +94,7 @@ test('richtet die Familie ein und schützt Gerichte nach dem Abmelden', async ({
   await expect(page.getByText('Diese Seite ist nur für die Administration.')).toBeVisible();
   expect((await page.request.get('/api/users')).status()).toBe(403);
 
+  await page.getByRole('link', { name: 'Mehr' }).click();
   await page.getByTestId('logout').click();
   await expect(page.getByRole('heading', { name: 'Anmelden' })).toBeVisible();
   expect((await page.request.get('/api/dishes')).status()).toBe(401);

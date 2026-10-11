@@ -107,7 +107,7 @@ test('zeigt einen Fehler und erlaubt einen neuen Versuch', async () => {
   await userEvent.click(screen.getByTestId('ai-submit'));
 
   expect(await screen.findByTestId('ai-error')).toHaveTextContent('nicht erreichbar');
-  expect(screen.getByText(/Vorschlagsauswahl darunter/)).toBeInTheDocument();
+  expect(screen.getByText(/Vorschlagsauswahl darüber/)).toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
   expect(fetchMock.mock.calls.filter((entry) => String(entry[0]).includes('/api/ai/recommendations'))).toHaveLength(2);
 

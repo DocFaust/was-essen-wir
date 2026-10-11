@@ -27,6 +27,7 @@ test('schlägt drei unterschiedliche Gerichte vor', async ({ page }) => {
   await createDish(page, breakfast, 'Frühstück');
   await chooseStar(page.getByTestId('dish-rating'), 5);
 
+  await page.getByRole('link', { name: 'Mehr' }).click();
   await page.getByTestId('logout').click();
   await login(page, 'Bea', memberPassword);
   await openDish(page, pizza);
@@ -39,12 +40,14 @@ test('schlägt drei unterschiedliche Gerichte vor', async ({ page }) => {
   await openDish(page, pan);
   await chooseStar(page.getByTestId('dish-rating'), 4);
 
+  await page.getByRole('link', { name: 'Mehr' }).click();
   await page.getByTestId('logout').click();
   await login(page, 'Ada', adminPassword);
-  await page.getByRole('link', { name: 'Start' }).click();
-  await expect(page.getByRole('heading', { name: 'Was essen wir?' })).toBeVisible();
+  await page.getByRole('link', { name: 'Heute' }).click();
+  await expect(page.getByRole('heading', { name: 'Was essen wir heute?' })).toBeVisible();
   await page.getByRole('button', { name: 'Abendessen', exact: true }).click();
   await page.getByRole('button', { name: 'Bea Beispiel', exact: true }).click();
+  await page.getByRole('button', { name: 'Weitere Einstellungen' }).click();
   await page.getByRole('switch', { name: 'Einfaches oder schnelles Essen' }).check();
   await page.getByTestId('show-suggestions').click();
 
@@ -109,7 +112,7 @@ async function login(page: Page, username: string, password: string) {
   await page.getByTestId('login-username').fill(username);
   await page.getByTestId('login-password').fill(password);
   await page.getByTestId('login-submit').click();
-  await expect(page.getByRole('heading', { name: 'Was essen wir?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Was essen wir heute?' })).toBeVisible();
 }
 
 async function openDish(page: Page, dishName: string) {

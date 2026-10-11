@@ -39,18 +39,33 @@ export function SuggestionCard({
             ))}
           </Stack>
         ) : null}
-        <Button component={RouterLink} to={`/gerichte/${suggestion.dishId}`} variant="outlined" fullWidth data-testid="open-suggestion">
-          Gericht öffnen
-        </Button>
         <Button type="button" variant="contained" fullWidth data-testid="suggestion-plan" onClick={onPlan}>
           Einplanen
         </Button>
         <Button type="button" variant="outlined" fullWidth data-testid="suggestion-eaten" onClick={onEaten}>
           Als gegessen eintragen
         </Button>
-        <Button type="button" variant="text" fullWidth disabled={disabled} data-testid="exclude-suggestion" onClick={onExclude}>
-          Nicht dieses Gericht
-        </Button>
+        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+          <Button
+            component={RouterLink}
+            to={`/gerichte/${suggestion.dishId}`}
+            variant="text"
+            data-testid="open-suggestion"
+            sx={{ flex: '1 1 140px', minWidth: 0 }}
+          >
+            Gericht öffnen
+          </Button>
+          <Button
+            type="button"
+            variant="text"
+            disabled={disabled}
+            data-testid="exclude-suggestion"
+            onClick={onExclude}
+            sx={{ flex: '1 1 140px', minWidth: 0 }}
+          >
+            Nicht dieses Gericht
+          </Button>
+        </Stack>
       </Stack>
     </Paper>
   );

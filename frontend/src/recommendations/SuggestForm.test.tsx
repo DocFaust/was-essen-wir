@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, expect, test, vi } from 'vitest';
+import { todayIso } from '../meals/dates';
 import { theme } from '../theme';
 import { SuggestForm } from './SuggestForm';
 import type { RecommendationResponse, Suggestion } from './types';
@@ -58,6 +59,7 @@ test('wählt Mahlzeit, Mitessende und Präferenzen und zeigt drei Vorschläge', 
   expect(screen.getByRole('button', { name: 'Abendessen' })).toHaveAttribute('aria-pressed', 'true');
   await userEvent.click(screen.getByRole('button', { name: 'Frühstück' }));
   await userEvent.click(screen.getByRole('button', { name: 'Bea Beispiel' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Weitere Einstellungen' }));
   await userEvent.click(screen.getByRole('switch', { name: 'Einfaches oder schnelles Essen' }));
   await userEvent.click(screen.getByRole('switch', { name: 'Für Homeoffice geeignet' }));
   await userEvent.click(screen.getByRole('switch', { name: 'Für Meal Prep geeignet' }));
@@ -146,6 +148,54 @@ test('verlangt mindestens eine Person und zeigt Fehler', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Die Vorschläge sind gerade nicht verfügbar.');
 });
 
+test('blendet alte Vorschläge aus, solange neu berechnet wird', async () => {
+  let phase: 'first' | 'second' = 'first';
+  let releaseSecond: (value: Response) => void = () => undefined;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/members')) {
+        return json([ada]);
+      }
+      if (url.includes('/api/recommendations')) {
+        if (phase === 'first') {
+          phase = 'second';
+          return json({ suggestions, explanation: null });
+        }
+        return new Promise<Response>((resolve) => {
+          releaseSecond = resolve;
+        });
+      }
+      return json({ title: 'Fehler', detail: 'Unerwartete Anfrage', status: 500 }, 500);
+    }),
+  );
+  renderForm();
+  await screen.findByRole('button', { name: 'Ada Lovelace' });
+  await userEvent.click(screen.getByTestId('show-suggestions'));
+  expect(await screen.findByText('Pizza · Margherita')).toBeInTheDocument();
+  await userEvent.click(screen.getByTestId('show-suggestions'));
+  expect(screen.queryByText('Pizza · Margherita')).not.toBeInTheDocument();
+  expect(screen.getByText('Vorschläge werden berechnet …')).toBeInTheDocument();
+  releaseSecond(json({ suggestions, explanation: null }));
+  expect(await screen.findByText('Pizza · Margherita')).toBeInTheDocument();
+});
+
+test('übernimmt Gericht, Datum und Mahlzeit in die Einplanung', async () => {
+  mockFetch({ members: [ada], recommendation: { suggestions, explanation: null } });
+  renderForm();
+  await screen.findByRole('button', { name: 'Ada Lovelace' });
+  await userEvent.click(screen.getByTestId('show-suggestions'));
+  await screen.findByText('Pizza · Margherita');
+  await userEvent.click(screen.getAllByTestId('suggestion-plan')[0]);
+  expect(await screen.findByRole('heading', { name: 'Mahlzeit einplanen' })).toBeInTheDocument();
+  expect(await screen.findByTestId('meal-selected-dish')).toHaveTextContent('Pizza · Margherita');
+  expect(screen.queryByTestId('meal-dish-search')).not.toBeInTheDocument();
+  expect(screen.getByTestId('meal-date')).toHaveValue(todayIso());
+  expect(screen.getByRole('button', { name: 'Abendessen' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByTestId('meal-comment')).not.toBeInTheDocument();
+});
+
 test('zeigt einen Fehler, wenn die Mitessenden nicht geladen werden können', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => {
     throw new Error('offline');
@@ -179,6 +229,12 @@ function mockFetch(options: {
         return json({ title: 'Fehler', detail: 'Die Vorschläge sind gerade nicht verfügbar.', status: 500 }, 500);
       }
       return json(options.recommendation);
+    }
+    if (url.includes('/api/dishes/')) {
+      return json({ id: 'dish-pizza', name: 'Pizza', variants: [] });
+    }
+    if (url.includes('/api/dishes')) {
+      return json([{ id: 'dish-pizza', name: 'Pizza' }]);
     }
     return json({ title: 'Fehler', detail: 'Unerwartete Anfrage', status: 500 }, 500);
   });

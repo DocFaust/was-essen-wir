@@ -50,6 +50,7 @@ test('bewertet Gerichte und Varianten nur für die angemeldete Person', async ({
   await expectNoHorizontalScroll(page);
   expect(await page.evaluate(() => localStorage.length)).toBe(0);
 
+  await page.getByRole('link', { name: 'Mehr' }).click();
   await page.getByTestId('logout').click();
   await login(page, 'Bea', memberPassword);
   await openDish(page, dishName);
@@ -60,6 +61,7 @@ test('bewertet Gerichte und Varianten nur für die angemeldete Person', async ({
   await chooseStar(page.getByTestId('dish-rating'), 1);
   await expect(ratingStatus(page.getByTestId('dish-rating'))).toHaveText('Mag ich überhaupt nicht');
 
+  await page.getByRole('link', { name: 'Mehr' }).click();
   await page.getByTestId('logout').click();
   await login(page, 'Ada', adminPassword);
   await openDish(page, dishName);
@@ -83,7 +85,7 @@ async function login(page: Page, username: string, password: string) {
   await page.getByTestId('login-username').fill(username);
   await page.getByTestId('login-password').fill(password);
   await page.getByTestId('login-submit').click();
-  await expect(page.getByRole('heading', { name: 'Was essen wir?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Was essen wir heute?' })).toBeVisible();
 }
 
 async function openDish(page: Page, dishName: string) {

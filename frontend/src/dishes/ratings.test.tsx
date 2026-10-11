@@ -300,23 +300,27 @@ test('zeigt nach einem Benutzerwechsel nur die Bewertung der angemeldeten Person
   );
 
   expect(await screen.findByTestId('list-rating-dish-1-status')).toHaveTextContent('Esse ich gerne');
+  await userEvent.click(screen.getByRole('link', { name: 'Mehr' }));
   await userEvent.click(screen.getByTestId('logout'));
   await screen.findByRole('heading', { name: 'Anmelden' });
   await userEvent.type(screen.getByTestId('login-username'), 'bea');
   await userEvent.type(screen.getByTestId('login-password'), 'ein-langes-passwort');
   await userEvent.click(screen.getByTestId('login-submit'));
 
+  await userEvent.click(screen.getByRole('link', { name: 'Gerichte' }));
   expect(await screen.findByTestId('list-rating-dish-1-status')).toHaveTextContent('Nicht bewertet');
   expect(screen.getByRole('radio', { name: '4 Sterne, Esse ich gerne' })).not.toBeChecked();
   await chooseStar(screen.getByTestId('list-rating-dish-1'), '1 Stern, Mag ich überhaupt nicht');
   await waitFor(() => expect(screen.getByTestId('list-rating-dish-1-status')).toHaveTextContent('Mag ich überhaupt nicht'));
 
+  await userEvent.click(screen.getByRole('link', { name: 'Mehr' }));
   await userEvent.click(screen.getByTestId('logout'));
   await screen.findByRole('heading', { name: 'Anmelden' });
   await userEvent.type(screen.getByTestId('login-username'), 'ada');
   await userEvent.type(screen.getByTestId('login-password'), 'ein-langes-passwort');
   await userEvent.click(screen.getByTestId('login-submit'));
 
+  await userEvent.click(screen.getByRole('link', { name: 'Gerichte' }));
   expect(await screen.findByTestId('list-rating-dish-1-status')).toHaveTextContent('Esse ich gerne');
   expect(screen.getByRole('radio', { name: '1 Stern, Mag ich überhaupt nicht' })).not.toBeChecked();
   expect(localStorage).toHaveLength(0);
