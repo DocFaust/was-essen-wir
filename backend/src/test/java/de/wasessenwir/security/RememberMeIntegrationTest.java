@@ -347,6 +347,47 @@ class RememberMeIntegrationTest {
     }
 
     @Test
+    void loginDoesNotRebindAForeignRememberMeSeries() {
+        Primed primed = prime();
+        ResponseEntity<String> adminLogin = login(primed, null, true, ADMIN, ADMIN_PASSWORD);
+        String adminRemember = cookieValue(rememberHeader(adminLogin));
+        ResponseEntity<String> renewed = login(from(adminLogin), adminRemember, true, ADMIN, ADMIN_PASSWORD);
+        String adminRenewed = cookieValue(rememberHeader(renewed));
+        assertThat(selectorOf(adminRenewed)).isEqualTo(selectorOf(adminRemember));
+        assertThat(secretOf(adminRenewed)).isNotEqualTo(secretOf(adminRemember));
+        assertThat(countTokens()).isEqualTo(1L);
+        ResponseEntity<String> overlap = me(null, adminRemember);
+        assertThat(overlap.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(overlap.getBody()).contains("Ada Lovelace");
+        assertThat(rememberHeader(overlap)).isNull();
+        String adminHash = tokenHashFor(selectorOf(adminRenewed));
+
+        String adminSession = cookie(renewed, "WAEW_SESSION");
+        String adminCsrf = cookie(renewed, "XSRF-TOKEN");
+        ResponseEntity<UserResponse> created = raw.exchange(
+                "/api/users",
+                HttpMethod.POST,
+                new HttpEntity<>(new CreateUserRequest("Bea", "Bea Beispiel", MEMBER_PASSWORD, "MEMBER"), json(adminSession, adminCsrf, null)),
+                UserResponse.class);
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        ResponseEntity<String> memberLogin = login(primeAnonymous(), adminRenewed, true, "Bea", MEMBER_PASSWORD);
+        String memberRemember = cookieValue(rememberHeader(memberLogin));
+        assertThat(memberLogin.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(memberLogin.getBody()).contains("Bea Beispiel");
+        assertThat(selectorOf(memberRemember)).isNotEqualTo(selectorOf(adminRenewed));
+        assertThat(countTokens()).isEqualTo(2L);
+        assertThat(tokenHashFor(selectorOf(adminRenewed))).isEqualTo(adminHash);
+
+        ResponseEntity<String> adminRestore = me(null, adminRenewed);
+        assertThat(adminRestore.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(adminRestore.getBody()).contains("Ada Lovelace").doesNotContain("Bea Beispiel");
+        ResponseEntity<String> memberRestore = me(null, memberRemember);
+        assertThat(memberRestore.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(memberRestore.getBody()).contains("Bea Beispiel").doesNotContain("Ada Lovelace");
+    }
+
+    @Test
     void csrfStillProtectsStateChangingRequests() {
         Primed primed = prime();
         ResponseEntity<String> login = login(primed, null, true, ADMIN, ADMIN_PASSWORD);
@@ -533,6 +574,13 @@ class RememberMeIntegrationTest {
 
     private String tokenHash() {
         return jdbc.queryForObject("select encode(token_hash, 'hex') from remember_me_token", String.class);
+    }
+
+    private String tokenHashFor(String selector) {
+        return jdbc.queryForObject(
+                "select encode(token_hash, 'hex') from remember_me_token where selector = ?",
+                String.class,
+                selector);
     }
 
     private long appliedMigration() {

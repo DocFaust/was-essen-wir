@@ -48,13 +48,13 @@ class RememberMeRepository {
     void replace(String selector, UUID userId, byte[] tokenHash, OffsetDateTime expiresAt, OffsetDateTime now) {
         jdbc.sql("""
                 update remember_me_token
-                set user_id = :userId,
-                    previous_token_hash = token_hash,
+                set previous_token_hash = token_hash,
                     token_hash = :tokenHash,
                     rotated_at = :now,
                     expires_at = :expiresAt,
                     created_at = :now
                 where selector = :selector
+                  and user_id = :userId
                 """)
                 .param("selector", selector)
                 .param("userId", userId)

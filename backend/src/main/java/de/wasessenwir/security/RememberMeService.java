@@ -25,7 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
  * In PostgreSQL liegt nur der SHA-256 des Geheimnisses. Jede erfolgreiche Verwendung
  * rotiert das Geheimnis. Eine parallele Anfrage darf das gerade ersetzte Geheimnis
  * noch {@link #REUSE_GRACE} lang benutzen. Danach gilt dieselbe Serie als kompromittiert
- * und alle dauerhaften Anmeldungen der Person werden widerrufen.
+ * und alle dauerhaften Anmeldungen der Person werden widerrufen. Eine Anmeldung setzt
+ * eine bestehende Serie nur fort, wenn das vorgelegte Geheimnis zum gespeicherten Hash
+ * passt und die Zeile derselben Person gehört. Sonst entsteht eine neue Serie.
  */
 @Service
 public class RememberMeService {
@@ -69,10 +71,15 @@ public class RememberMeService {
         byte[] hash = TokenHasher.sha256(secret);
         OffsetDateTime expiresAt = now.plus(properties.duration());
         RememberMeCookies.Parsed parsed = RememberMeCookies.parse(presented);
-        String selector = parsed == null ? null : parsed.selector();
-        if (selector != null && tokens.lock(selector).isPresent()) {
-            tokens.replace(selector, userId, hash, expiresAt, now);
-        } else {
+        String selector = null;
+        if (parsed != null) {
+            Optional<RememberMeToken> existing = tokens.lock(parsed.selector());
+            if (existing.isPresent() && ownsSeries(existing.get(), userId, parsed.secret())) {
+                selector = parsed.selector();
+                tokens.replace(selector, userId, hash, expiresAt, now);
+            }
+        }
+        if (selector == null) {
             selector = insertFresh(userId, hash, expiresAt, now);
         }
         tokens.trimTo(userId, MAX_TOKENS_PER_USER);
@@ -173,6 +180,10 @@ public class RememberMeService {
             tokens.insert(retry, userId, hash, expiresAt, now);
             return retry;
         }
+    }
+
+    private static boolean ownsSeries(RememberMeToken token, UUID userId, String secret) {
+        return userId.equals(token.userId()) && TokenHasher.matches(token.tokenHash(), secret);
     }
 
     private static boolean withinGrace(OffsetDateTime rotatedAt, OffsetDateTime now) {
