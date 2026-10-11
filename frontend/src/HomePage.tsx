@@ -4,6 +4,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useAuth } from './auth/AuthProvider';
+import { AiAssistant } from './recommendations/AiAssistant';
 import { SuggestForm } from './recommendations/SuggestForm';
 import { useBackendStatus } from './useBackendStatus';
 
@@ -21,7 +22,12 @@ export function HomePage() {
           Drei Vorschläge für die Personen, die mitessen.
         </Typography>
       </header>
-      {user ? <SuggestForm userId={user.id} /> : null}
+      {user ? (
+        <>
+          <AiAssistant userId={user.id} />
+          <SuggestForm userId={user.id} />
+        </>
+      ) : null}
       <BackendStatus state={state} onRetry={retry} />
     </Stack>
   );

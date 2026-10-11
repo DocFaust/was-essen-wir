@@ -9,6 +9,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -40,10 +41,16 @@ public class RecommendationService {
 
     @Transactional(readOnly = true)
     public RecommendationResponse recommend(RecommendationRequest request) {
+        return recommend(request, CatalogSelection.all());
+    }
+
+    @Transactional(readOnly = true)
+    public RecommendationResponse recommend(RecommendationRequest request, CatalogSelection selection) {
         CurrentUser.requireId();
         if (request == null || request.mealType() == null) {
             throw new InvalidRequestException("Bitte wähle eine Mahlzeit.");
         }
+        CatalogSelection catalog = selection == null ? CatalogSelection.all() : selection;
         List<UUID> dinerIds = diners(request.dinerIds());
         Set<UUID> excluded = excluded(request.excludedDishIds());
         RecommendationPreferences preferences = new RecommendationPreferences(
@@ -65,8 +72,20 @@ public class RecommendationService {
             List<UUID> dishIds = dishes.stream().map(RecommendationRepository.DishRow::id).toList();
             List<RecommendationRepository.VariantRow> variants = repository.findVariants(dishIds);
             candidates = CandidateAssembler.assemble(dishes, variants);
-            List<UUID> variantIds = variants.stream().map(RecommendationRepository.VariantRow::id).toList();
-            ratings = RatingLookup.from(repository.findRatings(dinerIds, dishIds, variantIds));
+            if (catalog.restricted()) {
+                candidates = candidates.stream().filter(catalog::includes).toList();
+                if (candidates.isEmpty()) {
+                    return new RecommendationResponse(
+                            List.of(),
+                            "In der Sammlung gibt es dazu für diese Mahlzeit kein passendes Gericht.");
+                }
+            }
+            List<UUID> ratedDishIds = candidates.stream().map(Candidate::dishId).distinct().toList();
+            List<UUID> variantIds = candidates.stream()
+                    .map(Candidate::variantId)
+                    .filter(Objects::nonNull)
+                    .toList();
+            ratings = RatingLookup.from(repository.findRatings(dinerIds, ratedDishIds, variantIds));
         }
         EngineResult result = RecommendationEngine.recommend(
                 candidates, ratings, dinerIds, preferences, excluded, random, repetition);

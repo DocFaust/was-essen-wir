@@ -1,10 +1,10 @@
 # Empfehlungslogik
 
-Iteration 5 erzeugt bis zu drei Vorschläge regelbasiert im Backend. Iteration 6 ergänzt die Kochhistorie und bereits geplante Mahlzeiten. Zutatenbestände, natürlichsprachliche Wünsche und KI bleiben spätere Score-Faktoren. Konkrete Gewichte sind Startparameter und können nach Alltagserfahrung angepasst werden.
+Iteration 5 erzeugt bis zu drei Vorschläge regelbasiert im Backend. Iteration 6 ergänzt die Kochhistorie und bereits geplante Mahlzeiten. Iteration 7 kann die Kandidaten vorher auf Katalogbegriffe einschränken. Die KI verändert die Gewichte nicht. Zutatenbestände bleiben ein späterer Score-Faktor. Konkrete Gewichte sind Startparameter und können nach Alltagserfahrung angepasst werden.
 
 ## Ablauf
 
-1. **Kandidaten.** Alle Grundgerichte mit der gewählten Mahlzeit und ihre Varianten. Die Mahlzeit ist ein harter Filter. Ein Gericht ohne diese Mahlzeit fällt weg. Grundgericht und Variante sind getrennte Kandidaten. Fehlende optionale Eigenschaften einer Variante werden wie in der Gerichteverwaltung vom Grundgericht übernommen.
+1. **Kandidaten.** Alle Grundgerichte mit der gewählten Mahlzeit und ihre Varianten. Die Mahlzeit ist ein harter Filter. Ein Gericht ohne diese Mahlzeit fällt weg. Grundgericht und Variante sind getrennte Kandidaten. Fehlende optionale Eigenschaften einer Variante werden wie in der Gerichteverwaltung vom Grundgericht übernommen. Katalogbegriffe des Assistenten sind ein weiterer harter Filter vor der Gewichtung: ein Suchtreffer auf Gericht, Kategorie oder Grundzutat behält die Familie, ein Treffer nur auf eine Variante behält diese Variante. Ein Ausschluss entfernt die Familie. Ohne Treffer gibt es keine Vorschläge. Die Abgleichregeln stehen in [`ki-assistent.md`](ki-assistent.md).
 2. **Gewichtung.** Persönliche Sterne der ausgewählten Mitessenden, ein zusätzlicher Malus für Ein-Stern-Bewertungen, ein Bonus für übereinstimmende positive Bewertungen, ein kleiner Bonus für völlig unbewertete Kandidaten, weiche Kontextpräferenzen, eine Wiederholungsstrafe und eine Planungsstrafe.
 3. **Auswahl.** Gewichtete Zufallsauswahl ohne doppelte Gerichtsfamilie. Eine Familie ist das Grundgericht einschließlich seiner Varianten. Innerhalb der Familie bestimmt das höchste Auswahlgewicht, wie oft die Familie erscheint. Welches Mitglied gezeigt wird, entscheidet eine zweite gewichtete Ziehung.
 4. **Begründung.** Ein kurzer Satz aus den aggregierten Signalen. Keine Namen, keine Sterne, keine Einzelbewertungen.
@@ -126,7 +126,8 @@ Die erste passende Formulierung wird angezeigt:
 ## Grenzen
 
 - Keine Allergien oder anderen harten Ausschlüsse außer Mahlzeit und vom Benutzer ausgeschlossenen Familien.
-- Keine Zutaten, keine natürlichsprachlichen Wünsche, keine KI.
+- Keine Allergieerkennung aus Gerichtsnamen. Zutaten zählen nur, wenn sie gespeichert sind.
+- Die KI setzt Kriterien, sie berechnet keine Rangfolge.
 - Vorschläge werden nicht gespeichert und gelten nicht als gegessen.
 - Die Begründung nennt keine Person und keine Sternezahl. Wer die Formel kennt, kann aus der Formulierung trotzdem grobe Gruppen ableiten, zum Beispiel dass mindestens zwei Personen ein Gericht mögen.
 - Bei weniger als drei Gerichtsfamilien gibt es weniger Vorschläge und einen erklärenden Satz. Es werden keine Gerichte erfunden und keine Familie doppelt gezeigt.

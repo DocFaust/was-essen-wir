@@ -1,5 +1,6 @@
 package de.wasessenwir;
 
+import de.wasessenwir.ai.AiProperties;
 import de.wasessenwir.security.SecurityProperties;
 import de.wasessenwir.setup.SetupProperties;
 import java.time.Clock;
@@ -10,7 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties({SetupProperties.class, SecurityProperties.class})
+@EnableConfigurationProperties({SetupProperties.class, SecurityProperties.class, AiProperties.class})
 public class AppConfig {
 
     @Bean

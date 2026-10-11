@@ -1,6 +1,6 @@
 # Architektur
 
-**Stand:** 10.10.2026
+**Stand:** 11.10.2026
 
 ## Entscheidungen
 
@@ -11,7 +11,7 @@
 - Betrieb: Docker Compose. Zielplattform ist ein Raspberry Pi 5 (`linux/arm64`). Entwicklung auf Windows und Linux. Ausschließlich privates Heimnetz, keine öffentliche Internetfreigabe.
 - Konfiguration über Umgebungsvariablen. `.env` bleibt lokal. `.env.example` enthält keine echten Geheimnisse.
 - Authentifizierung: Spring Security mit lokaler Benutzerverwaltung und serverseitigen HTTP-Sessions. Keine Keycloak-, OAuth2-, JWT- oder separate Authentifizierungsinfrastruktur. Keine öffentliche Selbstregistrierung und keine E-Mail-Verifizierung.
-- KI in einer späteren Iteration: OpenAI-API nur serverseitig, über eine austauschbare Provider-Abstraktion. Die KI erhält keinen Datenbankzugriff. Kernfunktionen bleiben ohne LLM nutzbar.
+- KI optional über eine austauschbare Provider-Abstraktion. Ollama und die OpenAI-Chat-Completions-API laufen nur serverseitig. Die KI erhält keinen Datenbankzugriff und wählt keine Gerichte selbst. Kernfunktionen bleiben ohne LLM nutzbar. Der Ablauf steht in [`ki-assistent.md`](ki-assistent.md).
 
 ## Iteration 1
 
@@ -44,3 +44,7 @@ Essensvorschläge berechnet ein eigener Dienst im Backend: Kandidaten zur Mahlze
 ## Iteration 6
 
 Planung und Historie sind Zustände derselben Mahlzeit `meal_event`. Bestätigen setzt den Status von `PLANNED` auf `EATEN` und legt keine zweite Zeile an. Ein eigener Wiederholungsrechner liest gegessene und geplante Mahlzeiten in einer Abfrage und zieht sie vom bestehenden Score ab. Gelöschte Gerichte bleiben über einen Namenssnapshot lesbar; die Wiederholung zählt nur noch vorhandene Gerichte. Das Referenzdatum der Empfehlung ist standardmäßig der lokale Kalendertag der Installation (`app.time-zone`, Standard `Europe/Berlin`), nicht der UTC-Tag. Die Endpunkte `/api/meal-plans` und `/api/meal-history` verlangen eine Sitzung und CSRF. Jede angemeldete Person darf die gemeinsame Planung und Historie bearbeiten. Die Benutzerverwaltung bleibt bei `ADMIN`.
+
+## Iteration 7
+
+Der Essensassistent ist eine optionale Schicht vor dem bestehenden Empfehlungsdienst. `POST /api/ai/recommendations` verlangt eine Sitzung und CSRF. Das Modell liefert nur ein versioniertes JSON mit Mahlzeit, Datum, genannten Namen, Präferenzen und Katalogbegriffen. Namen und Katalog löst das Backend lokal auf. Bewertungen, Historie und der Katalog gehen nicht an den Provider. `AI_ENABLED=false` lässt die Anwendung ohne externe Verbindung starten. Ollama kann über eine LAN-Adresse auf einem anderen Rechner liegen. Die OpenAI-Chat-Completions-Schnittstelle wird nur vom Backend aufgerufen. Der Ablauf steht in [`ki-assistent.md`](ki-assistent.md).

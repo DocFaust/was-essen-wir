@@ -38,6 +38,19 @@ app:
     login-window: ${APP_LOGIN_WINDOW:PT15M}
     setup-max-attempts: ${APP_SETUP_MAX_ATTEMPTS:8}
     setup-window: ${APP_SETUP_WINDOW:PT15M}
+  ai:
+    enabled: ${AI_ENABLED:false}
+    provider: ${AI_PROVIDER:ollama}
+    max-input-length: ${AI_MAX_INPUT_LENGTH:500}
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://127.0.0.1:11434}
+      model: ${OLLAMA_MODEL:qwen3.5:9b}
+      timeout: ${OLLAMA_TIMEOUT:30s}
+    openai:
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      api-key: ${OPENAI_API_KEY:}
+      model: ${OPENAI_MODEL:gpt-4.1-mini}
+      timeout: ${OPENAI_TIMEOUT:30s}
 
 management:
   endpoints:
