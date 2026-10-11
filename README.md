@@ -39,7 +39,7 @@ In `.env` ein eigenes `POSTGRES_PASSWORD` setzen. Die Datei bleibt lokal und ist
 PostgreSQL für das auf dem Host laufende Backend veröffentlichen:
 
 ```sh
-docker compose --env-file .env -f deploy/compose.yaml -f deploy/compose.dev.yaml up -d postgres
+docker compose --env-file .env -f compose.yaml -f compose.dev.yaml up -d postgres
 ```
 
 Backend:
@@ -65,7 +65,7 @@ Vite stellt die Oberfläche auf `http://127.0.0.1:5173` bereit und leitet `/api`
 ## Start über Docker Compose
 
 ```sh
-docker compose --env-file .env -f deploy/compose.yaml up --build
+docker compose --env-file .env -f compose.yaml up --build
 ```
 
 Die Oberfläche ist unter `http://127.0.0.1:8080` erreichbar. PostgreSQL und das Backend bleiben im Compose-Netz. Nur das Frontend veröffentlicht einen Port und leitet `/api` an das Backend weiter.
@@ -73,13 +73,13 @@ Die Oberfläche ist unter `http://127.0.0.1:8080` erreichbar. PostgreSQL und das
 Stoppen, Datenbankvolume behalten:
 
 ```sh
-docker compose --env-file .env -f deploy/compose.yaml down
+docker compose --env-file .env -f compose.yaml down
 ```
 
 Stoppen und Datenbankvolume löschen:
 
 ```sh
-docker compose --env-file .env -f deploy/compose.yaml down --volumes
+docker compose --env-file .env -f compose.yaml down --volumes
 ```
 
 ## Ersteinrichtung
@@ -87,7 +87,7 @@ docker compose --env-file .env -f deploy/compose.yaml down --volumes
 Beim ersten Start mit leerer Datenbank gibt das Backend einmalig ein Setup-Token ins Log:
 
 ```sh
-docker compose --env-file .env -f deploy/compose.yaml logs backend
+docker compose --env-file .env -f compose.yaml logs backend
 ```
 
 Die Zeile enthält `SETUP_TOKEN` und den Klartext. Die Oberfläche erklärt denselben Weg. Das Token liegt nicht in der API, nicht im Frontend und nicht in Git. Gespeichert wird nur ein SHA-256-Hash. Es gilt 24 Stunden (`APP_SETUP_TOKEN_TTL`) und kann genau einmal den ersten Administrator anlegen. Danach ist die Einrichtung zu, auch nach einem Neustart.

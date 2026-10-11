@@ -17,7 +17,7 @@ const env = {
   AI_PROVIDER: 'fixture',
 };
 
-const compose = ['compose', '--project-name', project, '-f', 'deploy/compose.yaml'];
+const compose = ['compose', '--project-name', project, '-f', 'compose.yaml'];
 
 function run(command, args, cwd = root) {
   return new Promise((resolve, reject) => {
