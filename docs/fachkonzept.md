@@ -1,8 +1,8 @@
 # Fachkonzept – Was essen wir?
 
-**Version:** 1.8 · **Stand:** 11.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
+**Version:** 1.9 · **Stand:** 11.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
 
-Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Planung, Essenshistorie und ein optionaler Essensassistent sind umgesetzt. Der Assistent übersetzt natürlichsprachliche Wünsche; die Auswahl bleibt regelbasiert. Schreibaktionen der KI folgen später. Die Gewichte der Vorschläge stehen in [`empfehlungslogik.md`](empfehlungslogik.md), der Assistent in [`ki-assistent.md`](ki-assistent.md).
+Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Planung, Essenshistorie und ein optionaler Essensassistent sind umgesetzt. Der Assistent übersetzt natürlichsprachliche Wünsche; die Auswahl bleibt regelbasiert. Zusätzlich kann eine Beschreibung als Entwurf für ein Gericht oder eine Variante vorbereitet werden. Gespeichert wird der Entwurf nur nach ausdrücklicher Bestätigung über die Gerichteverwaltung. Die Gewichte der Vorschläge stehen in [`empfehlungslogik.md`](empfehlungslogik.md), der Assistent in [`ki-assistent.md`](ki-assistent.md).
 
 ## 1. Ziel und Abgrenzung
 
@@ -100,9 +100,10 @@ Ein leeres Textfeld ist nicht gesetzt und wird nicht gespeichert. Deshalb zeigt 
 - Das System verändert niemals Sternebewertungen automatisch. Lernsignale müssen nachvollziehbar und bei Bedarf zurücksetzbar sein.
 
 ### 6.3 Neue Gerichte
-- Gelegentlich darf die KI neue, als *neu* gekennzeichnete Gerichte empfehlen, passend zu bekannten Vorlieben und Aufwand.
+- Gelegentlich darf die KI neue, als *neu* gekennzeichnete Gerichte empfehlen, passend zu bekannten Vorlieben und Aufwand. Das ist noch nicht umgesetzt.
 - Neue Vorschläge werden nicht automatisch Teil der Sammlung; Übernahme nur nach aktiver Entscheidung.
-- Bei fehlenden oder unklaren Informationen keine falschen Aussagen zu Inhaltsstoffen/Allergiesicherheit.
+- Eine Beschreibung kann als Entwurf in die vorhandene Gerichteverwaltung übernommen werden. Die KI speichert dabei nichts. Fehlende Angaben bleiben unbekannt und werden nicht aus dem Namen ergänzt.
+- Bei fehlenden oder unklaren Informationen keine falschen Aussagen zu Inhaltsstoffen oder Allergiesicherheit.
 
 ## 7. Abstimmungen
 
@@ -122,13 +123,15 @@ Ein leeres Textfeld ist nicht gesetzt und wird nicht gespeichert. Deshalb zeigt 
 
 ## 9. KI-Integration und Schreibrechte
 
-Umgesetzt ist die Interpretation. Der Assistent sitzt in der Vorschlagsansicht und ist kein Chat. Ollama im Heimnetz und die OpenAI-Chat-Completions-API sind austauschbar; der Schlüssel bleibt serverseitig. Die KI liefert nur strukturierte Kriterien. Namen, Katalog und die Auswahl löst das Backend. An den Provider gehen die Anfrage, das heutige Datum und die erlaubten Kriterien, keine Bewertungen, keine Historie und kein Katalog. Details stehen in [`ki-assistent.md`](ki-assistent.md).
+Umgesetzt sind die Interpretation von Essenswünschen und die Vorbereitung eines Gerichte- oder Variantenentwurfs. Der Assistent sitzt in der Vorschlagsansicht und ist kein Chat. Ollama im Heimnetz und die OpenAI-Chat-Completions-API sind austauschbar; der Schlüssel bleibt serverseitig. Die KI liefert nur strukturierte Kriterien oder einen Entwurf. Namen, Katalog und die Auswahl löst das Backend. An den Provider gehen bei einem Wunsch die Anfrage, das heutige Datum und die erlaubten Kriterien. Bei einem Entwurf gehen die Beschreibung, das Schema und bei einer Variante Name und Zutaten des ausgewählten Grundgerichts. Keine Bewertungen, keine Historie, keine Planung und kein vollständiger Katalog. Details stehen in [`ki-assistent.md`](ki-assistent.md).
+
+Ein Entwurf ist keine Speicherung. Anlegen und Ändern laufen weiter über die vorhandenen Endpunkte, nachdem die Person das Formular bestätigt hat.
 
 Noch nicht umgesetzt und weiterhin nur mit ausdrücklicher Freigabe gedacht:
 
-- **Direkt ausführbar:** eindeutiges neues Gericht, eigene Bewertung, einfache Zutaten-/Kommentarergänzung, eindeutige persönliche Regel.
-- **Bestätigung erforderlich:** Löschen, Zusammenführen, größere Massenänderungen, Änderungen gemeinsamer Regeln, mehrdeutige oder folgenschwere Aktionen.
-- **Unzulässig:** Bewertungen anderer Personen ohne deren eigene authentifizierte Aktion ändern.
+- **Direkt ausführbar:** eigene Bewertung, einfache Ergänzung an einem bestehenden Gericht, eindeutige persönliche Regel.
+- **Bestätigung erforderlich:** Löschen, Zusammenführen, größere Massenänderungen, Änderungen gemeinsamer Regeln, mehrdeutige oder folgenschwere Aktionen. Ein neues Gericht oder eine neue Variante entsteht ebenfalls erst nach Bestätigung.
+- **Unzulässig:** Bewertungen anderer Personen ohne deren eigene authentifizierte Aktion ändern. Die KI speichert nicht selbst.
 - Änderungen protokollieren; für einfache Aktionen möglichst Undo bereitstellen.
 
 KI-Ausfälle dürfen die Gerichteverwaltung und die algorithmischen Vorschläge nicht blockieren. Bei deaktiviertem Assistenten startet die Anwendung ohne Provider.
@@ -137,7 +140,7 @@ KI-Ausfälle dürfen die Gerichteverwaltung und die algorithmischen Vorschläge 
 
 1. **Startseite:** der heutige Tag mit geplanten Mahlzeiten, Vorschläge mit den Standardwerten Abendessen, heute und angemeldete Person, optionale KI-Eingabe und kompakte Schnellaktionen.
 2. **Vorschläge:** drei Kandidaten, kurze Begründung, Einplanen als Hauptaktion, als gegessen erfassen, neu würfeln und Ausschluss. Abstimmen folgt später.
-3. **Gerichtesammlung:** Suche/Filter, Anlage/Bearbeitung, Varianten, Zutaten, persönliche Bewertungen.
+3. **Gerichtesammlung:** Suche/Filter, Anlage/Bearbeitung, Varianten, Zutaten, persönliche Bewertungen. Bei aktivem Assistenten kann eine Beschreibung das Formular vorausfüllen.
 4. **Wochenplan:** die aktuelle Woche als Tagesliste, heute markiert, geplante Mahlzeiten mit Bestätigen, Bearbeiten, Verschieben und Löschen.
 5. **Historie:** tatsächlich gegessene Mahlzeiten, Filter nach Datum/Person/Mahlzeit. Reste vom Vortag sind ein weiterer Eintrag, keine eigene Planung.
 6. **Familie & Regeln:** Profile, eigene Bewertungen, persönliche und gemeinsame Regeln.
@@ -168,7 +171,7 @@ Anforderungen an die technische Modellierung: Variantenvererbung mit klarer Übe
 
 **MVP:** Login/Profile, Gerichte und Varianten, Bewertungen, Mahlzeitentypen, Aufwand, Zutaten, Anwesenheit, Verwendungskontexte (Meal Prep/Homeoffice), regelbasierte drei Vorschläge, Auswahl, Historie; mobile-first umgesetzt.
 
-**Ausbaustufe 2:** Natürlichsprachliche Eingaben über Ollama oder OpenAI sind umgesetzt. Offen bleiben kontrollierte Schreibaktionen, Familien-/Personenregeln und gelegentliche neue Ideen.
+**Ausbaustufe 2:** Natürlichsprachliche Essenswünsche und ein prüfbarer Entwurf für Gerichte und Varianten sind umgesetzt. Offen bleiben weitere Schreibaktionen, Familien-/Personenregeln und gelegentliche neue Ideen.
 
 **Ausbaustufe 3:** Optionale Abstimmungen, automatische Wochenplanung, behutsames Lernen und verfeinerte Erklärbarkeit. Ein einfacher Wochenplan und die Historie gehören bereits zum MVP. Die Reihenfolge kann nach MVP-Tests angepasst werden.
 
@@ -180,6 +183,7 @@ Anforderungen an die technische Modellierung: Variantenvererbung mit klarer Übe
 - Ein-Stern-Bewertungen senken die Priorität, schließen nicht pauschal aus.
 - Die Anwendung zeigt auch ohne KI-Verbindung Vorschläge aus vorhandenen Gerichten.
 - Der Essensassistent kann eine Anfrage in Mahlzeit, Datum, Mitessende und Katalogwünsche übersetzen. Die Gerichte kommen aus der Sammlung. Eine eigene Bewertung ändert er nicht.
+- Eine natürlichsprachliche Beschreibung kann ein Gericht oder eine Variante vorausfüllen. Unbekannte Eigenschaften bleiben leer. Gespeichert wird erst mit dem bestehenden Formular. Ein Abbruch legt nichts an.
 - Ein ungeplanter Tag im Kalender ist gültig und löst keine Fehlermeldung aus.
 - Die Kochhistorie wird nur durch Bestätigung einer tatsächlich gegessenen Mahlzeit ergänzt.
 - Neue KI-Ideen sind klar gekennzeichnet und werden nicht ohne Übernahme gespeichert.

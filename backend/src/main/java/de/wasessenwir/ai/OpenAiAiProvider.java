@@ -11,7 +11,7 @@ final class OpenAiAiProvider implements AiProvider {
 
     static final String COMPLETIONS_PATH = "/v1/chat/completions";
 
-    private static final String SCHEMA = """
+    private static final String MEAL_SCHEMA = """
             {
               "type": "object",
               "additionalProperties": false,
@@ -45,7 +45,8 @@ final class OpenAiAiProvider implements AiProvider {
     private final AiProperties.OpenAi properties;
     private final ObjectMapper mapper;
     private final HttpClient client;
-    private final JsonNode schema;
+    private final JsonNode mealSchema;
+    private final JsonNode draftSchema;
 
     OpenAiAiProvider(AiProperties.OpenAi properties, ObjectMapper mapper) {
         this.properties = properties;
@@ -54,7 +55,8 @@ final class OpenAiAiProvider implements AiProvider {
                 .connectTimeout(ProviderHttp.timeout(properties.timeout()))
                 .build();
         try {
-            this.schema = mapper.readTree(SCHEMA);
+            this.mealSchema = mapper.readTree(MEAL_SCHEMA);
+            this.draftSchema = DishDraftSchema.tree(mapper);
         } catch (JacksonException exception) {
             throw new IllegalStateException("Das JSON-Schema des Assistenten ist ungültig.");
         }
@@ -62,6 +64,15 @@ final class OpenAiAiProvider implements AiProvider {
 
     @Override
     public String interpret(String systemPrompt, String userMessage) {
+        return complete("meal_intent", mealSchema, systemPrompt, userMessage);
+    }
+
+    @Override
+    public String draft(String systemPrompt, String userMessage) {
+        return complete("dish_draft", draftSchema, systemPrompt, userMessage);
+    }
+
+    private String complete(String schemaName, JsonNode schema, String systemPrompt, String userMessage) {
         if (properties.apiKey() == null || properties.apiKey().isBlank() || properties.model() == null || properties.model().isBlank()) {
             throw AiProviderException.unreachable();
         }
@@ -70,7 +81,7 @@ final class OpenAiAiProvider implements AiProvider {
         ObjectNode format = body.putObject("response_format");
         format.put("type", "json_schema");
         ObjectNode jsonSchema = format.putObject("json_schema");
-        jsonSchema.put("name", "meal_intent");
+        jsonSchema.put("name", schemaName);
         jsonSchema.put("strict", true);
         jsonSchema.set("schema", schema);
         var messages = body.putArray("messages");

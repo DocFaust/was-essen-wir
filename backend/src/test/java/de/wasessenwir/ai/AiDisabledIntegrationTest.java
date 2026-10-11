@@ -117,6 +117,12 @@ class AiDisabledIntegrationTest {
         assertThat(status.getBody().provider()).isNull();
         assertThat(assistant.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(assistant.getBody()).contains("AI_DISABLED").doesNotContain("Exception");
+        ResponseEntity<String> draft = restTemplate.postForEntity(
+                "/api/ai/dish-drafts",
+                new DishDraftRequest("Wir machen manchmal Suppe.", DraftKind.DISH, null),
+                String.class);
+        assertThat(draft.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(draft.getBody()).contains("AI_DISABLED");
         assertThat(classic.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(classic.getBody().suggestions()).hasSize(1);
         assertThat(HITS).hasValue(0);

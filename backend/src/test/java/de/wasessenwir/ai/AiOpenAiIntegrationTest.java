@@ -89,6 +89,7 @@ class AiOpenAiIntegrationTest {
     @BeforeEach
     void signIn() {
         AUTHORIZATIONS.clear();
+        REQUESTS.clear();
         restTemplate = new ApiSessions(rawTemplate).open();
         SetupStatusResponse status = restTemplate.getForEntity("/api/setup/status", SetupStatusResponse.class).getBody();
         if (status != null && status.setupRequired()) {
@@ -133,19 +134,51 @@ class AiOpenAiIntegrationTest {
         assertThat(classic.getBody().suggestions()).hasSize(1);
     }
 
+    @Test
+    void draftsWithTheDishSchemaAndKeepsTheKeyOnTheServer() {
+        restTemplate.postForEntity(
+                "/api/dishes",
+                new DishWriteRequest(
+                        "GeheimesRagout", null, List.of(MealType.ABENDESSEN), List.of(), null, List.of("Hackfleisch"),
+                        null, null, null, null, Suitability.UNKNOWN, Suitability.UNKNOWN, true),
+                DishDetailResponse.class);
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                "/api/ai/dish-drafts",
+                new DishDraftRequest("Wir machen manchmal Kartoffelgratin.", DraftKind.DISH, null),
+                String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("Kartoffelgratin").doesNotContain(API_KEY).doesNotContain("stars");
+        assertThat(REQUESTS).hasSize(1);
+        assertThat(REQUESTS.getFirst()).contains("dish_draft").contains("schemaVersion");
+        assertThat(REQUESTS.getFirst()).contains("Wir machen manchmal Kartoffelgratin.");
+        assertThat(REQUESTS.getFirst()).doesNotContain("Hackfleisch").doesNotContain("stars").doesNotContain(API_KEY);
+        assertThat(AUTHORIZATIONS).containsExactly("Bearer " + API_KEY);
+    }
+
+    private static final List<String> REQUESTS = new CopyOnWriteArrayList<>();
+
     private static HttpServer startServer() {
         try {
             HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             server.createContext("/v1/chat/completions", exchange -> {
-                exchange.getRequestBody().readAllBytes();
+                String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                REQUESTS.add(request);
                 AUTHORIZATIONS.add(exchange.getRequestHeaders().getFirst("Authorization"));
                 ObjectMapper mapper = new ObjectMapper();
                 ObjectNode root = mapper.createObjectNode();
-                root.putArray("choices").addObject().putObject("message").put("content", """
+                String content = request.contains("dish_draft")
+                        ? """
+                        {"schemaVersion":1,"name":"Kartoffelgratin","description":null,"mealTypes":[],"categories":[],
+                        "effort":null,"ingredients":[],"removedIngredients":[],"recipeText":null,"recipeUrl":null,
+                        "recipeSource":null,"comments":null,"mealPrep":null,"homeOffice":null,"warnings":[]}
+                        """
+                        : """
                         {"version":1,"mealType":"ABENDESSEN","date":null,"participantNames":[],"onlyNamedParticipants":false,\
                         "preferSimple":true,"preferHomeOffice":false,"preferMealPrep":false,"dishSearchTerms":[],\
                         "avoidDishTerms":[],"needsClarification":false,"clarificationQuestion":null}\
-                        """);
+                        """;
+                root.putArray("choices").addObject().putObject("message").put("content", content);
                 byte[] bytes = mapper.writeValueAsString(root).getBytes(StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().add("Content-Type", "application/json");
                 exchange.sendResponseHeaders(200, bytes.length);

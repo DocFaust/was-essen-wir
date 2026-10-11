@@ -215,8 +215,81 @@ Technische Fehler nennen keine Adressen, Schlüssel oder Stacktraces. „Erneut 
 ## Grenzen der ersten Version
 
 - Kein Chatverlauf und kein Lernen aus Gesprächen.
-- Keine Schreibaktionen, keine automatische Planung, keine neuen Gerichte, keine Rezepte, keine Bilder, keine Spracheingabe.
+- Keine automatische Planung, keine Rezepte, keine Bilder, keine Spracheingabe. Ein Gericht oder eine Variante entsteht nur, wenn die Person den Entwurf im Formular speichert.
 - Keine eigenen KI-Bewertungen und keine Sicht auf fremde Sterne.
 - Katalogwünsche funktionieren nur, wenn Name, Variante, Kategorie oder Zutat den Begriff enthalten.
 - Ein Ausschluss trifft die ganze Gerichtsfamilie, auch wenn nur eine Variante gemeint war.
 - „Ähnlich wie“ ist ein Suchbegriff, keine semantische Nachbarschaft.
+
+## Gerichteentwurf
+
+`POST /api/ai/dish-drafts` verlangt eine Sitzung und CSRF. Der Endpunkt erzeugt nur einen Entwurf. Er schreibt nicht in die Datenbank. Angelegt wird ein Gericht oder eine Variante erst über die vorhandenen Endpunkte, wenn die Person im Formular auf Speichern tippt. Abbrechen legt nichts an.
+
+Die Anfrage enthält die Beschreibung, die Art `DISH` oder `VARIANT` und bei einer Variante die ID des Grundgerichts. Die Beschreibung ist auf die bestehende Eingabelänge begrenzt, höchstens 2000 Zeichen. Eine unbekannte oder fremde Grundgericht-ID wird abgelehnt. Mehrere namensähnliche Grundgerichte werden als Auswahl zurückgegeben, ohne den Provider aufzurufen. Die Oberfläche startet die Variante bevorzugt aus den Details eines Gerichts.
+
+### Schema
+
+Ollama erhält das Schema als `format`-Objekt, OpenAI als Structured Output mit dem Namen `dish_draft`. Beide müssen Schemaversion 1 liefern. Alle Schlüssel sind Pflicht, unbekannte Werte sind `null` oder leere Listen. `additionalProperties` ist falsch. Unbekannte Enums, eine andere Schemaversion und gesetzte IDs (`id`, `dishId`, `baseDishId`, `variantId`, `participantIds`) werden verworfen.
+
+| Feld | Bedeutung |
+| --- | --- |
+| `name`, `description`, `recipeText`, `recipeUrl`, `recipeSource`, `comments` | Text oder `null` |
+| `mealTypes` | `FRUEHSTUECK`, `MITTAGESSEN`, `ABENDESSEN`, `SNACK` |
+| `categories`, `ingredients`, `removedIngredients`, `warnings` | kurze Listen |
+| `effort` | `EINFACH`, `MITTEL`, `AUFWENDIG` oder `null` |
+| `mealPrep`, `homeOffice` | `true`, `false` oder `null` |
+
+Die Antwort an den Browser mappt das auf die vorhandenen DTOs. `removedIngredients` bleibt intern und wird für eine Variante mit den Zutaten des Grundgerichts verrechnet. `ingredientsSpecified` ist bei einem Grundgericht `null` und bei einer Variante nur dann `true`, wenn der Text Zutaten nennt. `null` bei Aufwand, Meal Prep und Homeoffice einer Variante bedeutet weiter Vererbung, nicht „nicht geprüft“.
+
+### Erkannt, abgeleitet, unbekannt
+
+Das Modell darf nur belegen, was im Text steht. Das Backend prüft die Modellausgabe gegen eine lokale Lesart derselben Beschreibung. Eine Angabe ohne Beleg entfällt, eine ausdrückliche Angabe, die das Modell auslässt, wird ergänzt. `false` gilt nur bei Verneinung. `null` bleibt unbekannt.
+
+| Text | Ergebnis |
+| --- | --- |
+| bis 30 Minuten, einfach, schnell, unkompliziert, wenig Aufwand | `EINFACH` |
+| über 30 bis 75 Minuten, mittel, mittelschwer | `MITTEL` |
+| über 75 Minuten, aufwendig | `AUFWENDIG` |
+| „eine Stunde“, „halbe Stunde“, „anderthalb/eineinhalb Stunde“ | 60, 30, 90 Minuten, dann die Aufwandsklasse |
+| Aufwandswort und Dauer widersprechen sich | das Wort gewinnt, mit Hinweis |
+| Vorkochen, Vorbereiten, Meal Prep | Meal Prep `true`; Verneinung `false`; sonst `null` |
+| Homeoffice | analog `true`, `false` oder `null` |
+| „lässt sich aufwärmen“ | Kommentar, kein eigenes Feld und kein Meal Prep |
+| ausdrücklich vegetarisch | Kategorie nur am Grundgericht |
+| Mahlzeit an einer Variante | Hinweis, Mahlzeiten bleiben am Grundgericht |
+
+Aus dem bloßen Namen entstehen keine Zutaten, keine Allergene, keine Dauer, keine Eignung und kein Aufwand. Es gibt keine Minutenangabe in der Datenbank, deshalb wird eine genannte Dauer auf die vorhandene Aufwandsklasse abgebildet und im Formular als Hinweis gezeigt.
+
+Zutaten werden nur aus ausdrücklichen Mustern übernommen: „mit X statt Y“, „auch mit“, „Zutaten:“ und „aus A und B“. „mit Reis“ im Namen eines Gerichts ist keine Zutat. Eine Ersetzung übernimmt die übrige Liste des Grundgerichts nur, wenn die ersetzte Zutat darin vorkommt. Sonst stehen nur die neu genannten Zutaten im Formular, mit einem Hinweis zur Prüfung.
+
+### Duplikate
+
+Vor der Anzeige sucht das Backend lokal im Katalog, ohne Embeddings. Groß- und Kleinschreibung und naheliegende Schreibweisen zählen, Varianten eingeschlossen. Ab einem Schwellenwert erscheint ein Hinweis, zum Beispiel „Ein ähnliches Gericht existiert bereits: Spaghetti Bolognese.“ Die Person kann das vorhandene Gericht öffnen, eine Variante anlegen oder trotzdem speichern. Das ist keine Sperre. Die vorhandene Namensprüfung mit `confirmDuplicate` bleibt zusätzlich bestehen.
+
+### Datenschutz des Entwurfs
+
+Bei einem neuen Gericht gehen an den Provider nur die Beschreibung, die erlaubten Feldnamen, die Enums und das Schema. Bei einer Variante zusätzlich Name und Zutaten des ausgewählten Grundgerichts. Nicht übertragen werden Familienmitglieder, Bewertungen, Essenshistorie, Wochenplanung, Zugangsdaten und der vollständige Katalog. Der Schlüssel bleibt serverseitig. Antworten tragen `Cache-Control: no-store`. Protokolle enthalten keine Beschreibung und keine Modellantwort.
+
+### Fehler des Entwurfs
+
+| Situation | Verhalten |
+| --- | --- |
+| KI deaktiviert | `404`, `AI_DISABLED`; die manuelle Erfassung bleibt, die KI-Option erscheint nicht |
+| Provider nicht erreichbar | `503`, `AI_UNAVAILABLE` |
+| Timeout | `504`, `AI_TIMEOUT` |
+| ungültiges JSON, Enum oder Schema | `502`, `AI_INVALID` |
+| kein erkennbarer Name | `422`, `AI_UNINTERPRETABLE` |
+| Grundgericht fehlt | `404`, `BASE_DISH_NOT_FOUND` |
+| mehrere Grundgerichte | `200`, `outcome` `NEEDS_BASE_DISH` |
+| Speichern schlägt fehl | die Formulareingaben bleiben; der Entwurf hat nichts verändert |
+
+Bei einem KI-Fehler bleibt der Text stehen. Die Person kann es erneut versuchen oder zur manuellen Erfassung wechseln. Ein fehlgeschlagener Entwurf verändert keine bestehenden Gerichte.
+
+### Grenzen der Erfassung
+
+- Keine Rezeptgenerierung, keine Internetsuche, keine Bilder, kein OCR, keine Spracheingabe, keine Nährwerte, keine Allergenerkennung.
+- Keine neue Provider, keine Embeddings, keine frei ausführbaren Werkzeuge.
+- Die Art kommt von der Oberfläche. Ein Variantenwunsch auf der Seite „Neues Gericht“ wird nicht still zu einer Variante umgedeutet.
+- Freie Formulierungen außerhalb der genannten Zutatenmuster werden nicht als Zutatenliste gelesen.
+- „nicht nur zum Vorkochen“ kann als Verneinung gelesen werden.
+- Die Duplikatsuche ist eine Zeichen- und Wortähnlichkeit, keine Bedeutungssuche.

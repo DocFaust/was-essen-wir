@@ -4,7 +4,11 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useEffect, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router';
+import { aiStatus } from '../recommendations/api';
 import { ApiError, createDish, getDish, updateDish } from './api';
+import { CapturePanel } from './CapturePanel';
+import { DraftSummary } from './DraftSummary';
+import type { DishDraft } from './draft';
 import { EFFORTS, EFFORT_LABELS, MEAL_TYPES, MEAL_TYPE_LABELS, SUITABILITY_LABELS, emptyToNull } from './labels';
 import type { DishDetail, DishWrite, Effort, MealType, Suitability } from './types';
 import { ChoiceButtons, ConfirmDialog, ErrorState, LoadingState, NameListEditor, StickyActions } from './ui';
@@ -88,9 +92,59 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
   const savingRef = useRef(false);
   const [message, setMessage] = useState<string | null>(null);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [mode, setMode] = useState<'manual' | 'ai'>('manual');
+  const [draftMeta, setDraftMeta] = useState<DishDraft | null>(null);
+  const [edited, setEdited] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (dishId) {
+      return;
+    }
+    let active = true;
+    aiStatus()
+      .then((status) => {
+        if (active) {
+          setAiEnabled(status.enabled);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setAiEnabled(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [dishId]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+    if (draftMeta) {
+      setEdited((current) => (current.includes(key) ? current : [...current, key]));
+    }
+  }
+
+  function applyDraft(draft: DishDraft) {
+    setForm({
+      name: draft.name ?? '',
+      description: draft.description ?? '',
+      mealTypes: draft.mealTypes,
+      categories: draft.categories,
+      effort: draft.effort ?? '',
+      ingredients: draft.ingredients,
+      recipeText: draft.recipeText ?? '',
+      recipeUrl: draft.recipeUrl ?? '',
+      recipeSource: draft.recipeSource ?? '',
+      comments: draft.comments ?? '',
+      mealPrep: draft.mealPrep === true ? 'SUITABLE' : draft.mealPrep === false ? 'UNSUITABLE' : 'UNKNOWN',
+      homeOffice: draft.homeOffice === true ? 'SUITABLE' : draft.homeOffice === false ? 'UNSUITABLE' : 'UNKNOWN',
+    });
+    setDraftMeta(draft);
+    setEdited([]);
+    setDetailsOpen(true);
+    setMode('manual');
+    setMessage(null);
   }
 
   async function save(confirmDuplicate: boolean) {
@@ -125,6 +179,22 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
       <Typography variant="h1" component="h1">
         {dishId ? 'Gericht bearbeiten' : 'Neues Gericht'}
       </Typography>
+      {!dishId && aiEnabled ? (
+        <Stack spacing={1}>
+          <Button type="button" variant={mode === 'manual' ? 'contained' : 'outlined'} fullWidth onClick={() => setMode('manual')} data-testid="capture-manual">
+            Manuell erfassen
+          </Button>
+          <Button type="button" variant={mode === 'ai' ? 'contained' : 'outlined'} fullWidth onClick={() => setMode('ai')} data-testid="capture-ai">
+            Mit KI beschreiben
+          </Button>
+        </Stack>
+      ) : null}
+      {!dishId && aiEnabled && mode === 'ai' ? (
+        <CapturePanel kind="DISH" onDraft={applyDraft} onManual={() => setMode('manual')} />
+      ) : null}
+      {dishId || mode === 'manual' ? (
+        <>
+      {draftMeta ? <DraftSummary draft={draftMeta} edited={edited} /> : null}
       {message ? <ErrorState message={message} /> : null}
       <TextField
         label="Name"
@@ -243,6 +313,12 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
           Abbrechen
         </Button>
       </StickyActions>
+        </>
+      ) : (
+        <Button component={RouterLink} to="/gerichte" variant="text" fullWidth data-testid="draft-cancel">
+          Abbrechen
+        </Button>
+      )}
       <ConfirmDialog
         open={duplicateOpen}
         title="Name schon vergeben"

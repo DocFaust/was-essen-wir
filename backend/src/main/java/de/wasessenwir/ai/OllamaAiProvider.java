@@ -23,13 +23,26 @@ final class OllamaAiProvider implements AiProvider {
 
     @Override
     public String interpret(String systemPrompt, String userMessage) {
+        return chat(systemPrompt, userMessage, null);
+    }
+
+    @Override
+    public String draft(String systemPrompt, String userMessage) {
+        return chat(systemPrompt, userMessage, DishDraftSchema.tree(mapper));
+    }
+
+    private String chat(String systemPrompt, String userMessage, JsonNode schema) {
         if (properties.model() == null || properties.model().isBlank()) {
             throw AiProviderException.unreachable();
         }
         ObjectNode body = mapper.createObjectNode();
         body.put("model", properties.model().trim());
         body.put("stream", false);
-        body.put("format", "json");
+        if (schema == null) {
+            body.put("format", "json");
+        } else {
+            body.set("format", schema);
+        }
         body.put("think", false);
         body.putObject("options").put("temperature", 0);
         var messages = body.putArray("messages");

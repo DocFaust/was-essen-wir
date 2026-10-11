@@ -1,4 +1,5 @@
 import { request } from '../http';
+import type { DishDraft, DraftKind } from './draft';
 import type { DishDetail, DishQuery, DishSummary, DishWrite, VariantWrite } from './types';
 
 export { ApiError } from '../http';
@@ -46,6 +47,14 @@ export function updateVariant(dishId: string, variantId: string, body: VariantWr
 
 export function deleteVariant(dishId: string, variantId: string): Promise<DishDetail> {
   return request<DishDetail>(`/api/dishes/${dishId}/variants/${variantId}`, { method: 'DELETE' });
+}
+
+export function createDishDraft(body: {
+  description: string;
+  kind: DraftKind;
+  baseDishId: string | null;
+}): Promise<DishDraft> {
+  return request<DishDraft>('/api/ai/dish-drafts', { method: 'POST', body: JSON.stringify(body) });
 }
 
 export type RatingValue = {

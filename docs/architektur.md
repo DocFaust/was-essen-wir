@@ -11,7 +11,7 @@
 - Betrieb: Docker Compose. Zielplattform ist ein Raspberry Pi 5 (`linux/arm64`). Entwicklung auf Windows und Linux. Ausschließlich privates Heimnetz, keine öffentliche Internetfreigabe.
 - Konfiguration über Umgebungsvariablen. `.env` bleibt lokal. `.env.example` enthält keine echten Geheimnisse.
 - Authentifizierung: Spring Security mit lokaler Benutzerverwaltung und serverseitigen HTTP-Sessions. Keine Keycloak-, OAuth2-, JWT- oder separate Authentifizierungsinfrastruktur. Keine öffentliche Selbstregistrierung und keine E-Mail-Verifizierung.
-- KI optional über eine austauschbare Provider-Abstraktion. Ollama und die OpenAI-Chat-Completions-API laufen nur serverseitig. Die KI erhält keinen Datenbankzugriff und wählt keine Gerichte selbst. Kernfunktionen bleiben ohne LLM nutzbar. Der Ablauf steht in [`ki-assistent.md`](ki-assistent.md).
+- KI optional über eine austauschbare Provider-Abstraktion. Ollama und die OpenAI-Chat-Completions-API laufen nur serverseitig. Die KI erhält keinen Datenbankzugriff, wählt keine Gerichte selbst und speichert keine Gerichte. Kernfunktionen bleiben ohne LLM nutzbar. Der Ablauf steht in [`ki-assistent.md`](ki-assistent.md).
 
 ## Iteration 1
 
@@ -52,3 +52,7 @@ Der Essensassistent ist eine optionale Schicht vor dem bestehenden Empfehlungsdi
 ## Iteration 8
 
 Die Oberfläche priorisiert die täglichen Aufgaben, ohne neue Fachendpunkte. Die Startseite lädt die Planung des lokalen Tages über das bestehende `GET /api/meal-plans`. Einplanen, Bestätigen und Nachtragen verwenden weiter `/api/meal-plans` und `/api/meal-history`. Die Navigation hat fünf Ziele: Heute, Plan, Gerichte, Historie und Mehr. Profil, Familie und Abmelden liegen unter Mehr. Auf schmalen Viewports sitzt die Leiste unten im Layoutfluss, ab der MUI-Breakpoint-Grenze `md` darüber, damit sie den Inhalt nicht überdeckt. Die Gerichtssuche bleibt eine explizite Anfrage und lädt nicht bei jedem Tastendruck. Die KI bleibt optional und steht unter den regelbasierten Vorschlägen. Die Bewertung steht in [`ux-review.md`](ux-review.md).
+
+## Iteration 9
+
+`POST /api/ai/dish-drafts` übersetzt eine Beschreibung in einen versionierten Entwurf für ein Grundgericht oder eine Variante. Der Endpunkt liest nur und schreibt nicht. Ollama erhält dasselbe JSON-Schema als `format`, OpenAI als Structured Output `dish_draft`. Das Backend verwirft Angaben, die der Text nicht stützt, und ergänzt ausdrückliche Angaben, die das Modell auslässt. `null` bleibt unbekannt beziehungsweise bei einer Variante geerbt. Ein ähnlicher Name wird lokal angezeigt und sperrt das Speichern nicht. Die vorhandenen CRUD-Endpunkte legen das Gericht erst nach der Bestätigung im Formular an.
