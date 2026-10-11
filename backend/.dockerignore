@@ -1,4 +1,5 @@
 .gradle
+# JaCoCo-Reports und Testausgaben bleiben außerhalb des Images
 build
 bin
 src/test

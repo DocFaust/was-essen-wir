@@ -9,7 +9,7 @@
 .gradle/
 **/build/
 
-# Node
+# Node und Vitest-Coverage (JaCoCo-Reports liegen unter backend/build/)
 node_modules/
 dist/
 coverage/
