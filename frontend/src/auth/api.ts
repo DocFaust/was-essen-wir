@@ -16,10 +16,10 @@ export function completeSetup(input: SetupInput): Promise<CurrentUser> {
   });
 }
 
-export function login(username: string, password: string): Promise<CurrentUser> {
+export function login(username: string, password: string, rememberMe = false): Promise<CurrentUser> {
   return request<CurrentUser>('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, rememberMe }),
   });
 }
 

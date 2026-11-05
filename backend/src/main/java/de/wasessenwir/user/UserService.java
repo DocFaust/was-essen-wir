@@ -1,6 +1,7 @@
 package de.wasessenwir.user;
 
 import de.wasessenwir.security.CurrentUser;
+import de.wasessenwir.security.RememberMeService;
 import de.wasessenwir.security.UserSessions;
 import de.wasessenwir.web.ApiException;
 import java.time.Clock;
@@ -19,12 +20,19 @@ public class UserService {
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
     private final UserSessions sessions;
+    private final RememberMeService rememberMe;
     private final Clock clock;
 
-    public UserService(UserRepository users, PasswordEncoder passwordEncoder, UserSessions sessions, Clock clock) {
+    public UserService(
+            UserRepository users,
+            PasswordEncoder passwordEncoder,
+            UserSessions sessions,
+            RememberMeService rememberMe,
+            Clock clock) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.sessions = sessions;
+        this.rememberMe = rememberMe;
         this.clock = clock;
     }
 
@@ -86,6 +94,7 @@ public class UserService {
         }
         users.updateAccount(id, displayName, role, request.active(), now());
         if (!request.active()) {
+            rememberMe.revokeUser(id);
             sessions.invalidateUser(id);
         }
         return UserResponse.from(require(id));
@@ -96,6 +105,7 @@ public class UserService {
         Passwords.check(request == null ? null : request.password());
         require(id);
         users.updatePassword(id, passwordEncoder.encode(request.password()), true, now());
+        rememberMe.revokeUser(id);
         sessions.invalidateUser(id);
         return UserResponse.from(require(id));
     }
@@ -119,6 +129,7 @@ public class UserService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Das bisherige Passwort ist falsch.", "VALIDATION");
         }
         users.updatePassword(id, passwordEncoder.encode(request.newPassword()), false, now());
+        rememberMe.revokeUser(id);
         sessions.invalidateOthers(id, currentSessionId);
         return UserResponse.from(require(id));
     }

@@ -111,13 +111,13 @@ Bewertungen liegen in PostgreSQL und gelten nur für die angemeldete Person. *Ni
 
 ## Sitzungen, CSRF und HTTP
 
-Die Anmeldung speichert nichts im `localStorage`. Das Session-Cookie `WAEW_SESSION` ist `HttpOnly` und `SameSite=Lax`. Die Sitzung läuft nach 12 Stunden ab (`APP_SESSION_TIMEOUT`). Zustandsändernde Aufrufe senden das Cookie `XSRF-TOKEN` als Kopfzeile `X-XSRF-TOKEN`.
+Die Anmeldung speichert nichts im `localStorage`. Das Session-Cookie `WAEW_SESSION` ist `HttpOnly` und `SameSite=Lax`. Die Sitzung läuft nach 12 Stunden ab (`APP_SESSION_TIMEOUT`). Die Checkbox „Angemeldet bleiben“ ist standardmäßig aus. Ist sie gesetzt, legt das Backend zusätzlich das Cookie `WAEW_REMEMBER` an, ebenfalls `HttpOnly` und `SameSite=Lax`, mit einer Laufzeit von 30 Tagen (`APP_REMEMBER_ME_DURATION`). In PostgreSQL steht nur ein SHA-256 des geheimen Anteils. Nach Ablauf der Sitzung oder einem Backend-Neustart entsteht daraus wieder eine normale Sitzung. Abmelden beendet das nur auf diesem Gerät. Eine Passwortänderung, eine Zurücksetzung oder eine Deaktivierung beendet alle dauerhaften Anmeldungen der Person. Zustandsändernde Aufrufe senden das Cookie `XSRF-TOKEN` als Kopfzeile `X-XSRF-TOKEN`.
 
-Im Heimnetz läuft die Anwendung über HTTP. `APP_SESSION_COOKIE_SECURE` bleibt dafür `false`, sonst speichert der Browser das Cookie nicht. Steht später HTTPS vor dem Frontend, die Variable auf `true` setzen. Zusätzliche Authentifizierungscontainer sind nicht nötig.
+Im Heimnetz läuft die Anwendung über HTTP. `APP_SESSION_COOKIE_SECURE` bleibt dafür `false`, sonst speichert der Browser weder das Sitzungs- noch das Remember-me-Cookie. Steht später HTTPS vor dem Frontend, die Variable auf `true` setzen. Zusätzliche Authentifizierungscontainer sind nicht nötig. `APP_REMEMBER_ME_ENABLED=false` schaltet die Checkbox serverseitig ab, ohne die übrige Anmeldung zu ändern.
 
 ## Sicherung und Wiederherstellung
 
-Benutzer und der Einrichtungszustand liegen in PostgreSQL, Sitzungen nur im Speicher des Backends. Ein Neustart oder ein Restore verlangt deshalb eine neue Anmeldung, öffnet aber keine zweite Ersteinrichtung, wenn die Sicherung nach der Einrichtung entstanden ist.
+Benutzer und der Einrichtungszustand liegen in PostgreSQL, Sitzungen nur im Speicher des Backends. Ein Neustart beendet deshalb offene Sitzungen. Wer „Angemeldet bleiben“ gewählt hat, erhält beim nächsten Öffnen eine neue Sitzung, solange das Geräte-Token gilt. Die Remember-me-Zeilen liegen in derselben Datenbank und bleiben bei einem normalen Update erhalten.
 
 Eine Sicherung von vor der Einrichtung enthält den Token-Hash, nicht den Klartext. Fehlt das alte Log, das Token wie oben rotieren. `down --volumes` löscht die Datenbank und startet die Einrichtung von vorn; Gerichte gehen dabei mit verloren.
 

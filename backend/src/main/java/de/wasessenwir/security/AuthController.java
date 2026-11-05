@@ -53,8 +53,9 @@ public class AuthController {
     UserResponse password(
             @RequestBody PasswordChangeRequest request,
             Authentication authentication,
-            HttpServletRequest httpRequest) {
-        return auth.changePassword(require(authentication), request, httpRequest);
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        return auth.changePassword(require(authentication), request, httpRequest, httpResponse);
     }
 
     private static AppUserPrincipal require(Authentication authentication) {

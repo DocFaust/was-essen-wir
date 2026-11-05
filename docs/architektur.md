@@ -27,7 +27,9 @@ Lokale Benutzer mit den Rollen `ADMIN` und `MEMBER`. Passwörter liegen als BCry
 
 Solange kein Administrator existiert, ist die Einrichtung offen. Das Backend erzeugt dafür ein zufälliges Setup-Token, speichert nur seinen SHA-256-Hash und schreibt das Token einmalig ins Log. Die Ersteinrichtung prüft dieses Token in einer Datenbanktransaktion mit Sperre und kann genau einmal gelingen. Danach ist das Token ungültig, auch nach einem Neustart.
 
-`APP_SESSION_COOKIE_SECURE` steht standardmäßig auf `false`, weil das Heimnetz per HTTP erreichbar ist. Browser verwerfen `Secure`-Cookies auf reinem HTTP. Ein späterer HTTPS-Zugang setzt die Variable auf `true`.
+`APP_SESSION_COOKIE_SECURE` steht standardmäßig auf `false`, weil das Heimnetz per HTTP erreichbar ist. Browser verwerfen `Secure`-Cookies auf reinem HTTP. Ein späterer HTTPS-Zugang setzt die Variable auf `true`. Dieselbe Variable gilt für das Remember-me-Cookie.
+
+Optional kann sich eine Person auf einem Gerät bis zu 30 Tage angemeldet halten (`APP_REMEMBER_ME_ENABLED`, `APP_REMEMBER_ME_DURATION`). Die Checkbox ist standardmäßig aus; ohne sie bleibt es bei der 12-Stunden-Sitzung. Das Cookie `WAEW_REMEMBER` ist `HttpOnly`, `SameSite=Lax` und trägt Selektor plus Geheimnis. PostgreSQL speichert nur den SHA-256 des Geheimnisses. Jede Wiederanmeldung rotiert das Geheimnis und legt eine normale Sitzung an. Eine überlappende Anfrage darf das gerade ersetzte Geheimnis noch 30 Sekunden verwenden. Danach widerruft eine Wiederverwendung alle dauerhaften Anmeldungen dieser Person. Abmelden gilt nur für das aktuelle Gerät. Passwortänderung, Passwortzurücksetzung und Deaktivierung widerrufen alle Geräte. Höchstens acht Tokens bleiben pro Person erhalten; abgelaufene Zeilen werden beim Anmelden und bei der Wiederanmeldung gelöscht. CSRF bleibt für zustandsändernde Aufrufe Pflicht. Der Klartext steht nicht in `localStorage`, nicht in der API und nicht in der Datenbank.
 
 ## Iteration 4
 

@@ -38,6 +38,9 @@ app:
     login-window: ${APP_LOGIN_WINDOW:PT15M}
     setup-max-attempts: ${APP_SETUP_MAX_ATTEMPTS:8}
     setup-window: ${APP_SETUP_WINDOW:PT15M}
+  remember-me:
+    enabled: ${APP_REMEMBER_ME_ENABLED:true}
+    duration: ${APP_REMEMBER_ME_DURATION:P30D}
   ai:
     enabled: ${AI_ENABLED:false}
     provider: ${AI_PROVIDER:ollama}

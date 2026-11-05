@@ -19,7 +19,7 @@ Eine für eine einzelne Familie pro Installation bestimmte, mobil nutzbare Weban
 - Jedes Mitglied bewertet Gerichte und Varianten selbst mit 1–5 Sternen. Ändern darf nur die Person selbst, ermittelt aus ihrer angemeldeten Sitzung. Angezeigt wird in der aktuellen Fassung nur die eigene Bewertung. Fremde Bewertungen, Familiendurchschnitt und Bewertungsstatistiken sind noch nicht sichtbar.
 - Eine Administrationsrolle verwaltet Benutzer und grundlegende Einstellungen.
 - Keine öffentliche Selbstregistrierung; Zugriff nur nach Anmeldung.
-- Authentifizierung mit Spring Security, lokaler Benutzerverwaltung und serverseitigen Sessions. Keine Keycloak-, OAuth2- oder separate Authentifizierungsinfrastruktur.
+- Authentifizierung mit Spring Security, lokaler Benutzerverwaltung und serverseitigen Sessions. Optional bleibt die Anmeldung auf demselben Gerät bis zu 30 Tage erhalten; danach wird wieder eine normale Sitzung erzeugt. Keine Keycloak-, OAuth2- oder separate Authentifizierungsinfrastruktur.
 - Benutzer und Familienmitglieder werden zur Laufzeit angelegt und nicht im Quellcode hinterlegt.
 
 ## 3. Gerichte, Varianten und Zutaten

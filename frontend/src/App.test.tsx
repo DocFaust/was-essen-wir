@@ -222,28 +222,73 @@ test('zeigt eine Fehlermeldung, wenn die Passwörter nicht übereinstimmen', asy
 });
 
 test('meldet einen Benutzer an und wieder ab', async () => {
-  vi.stubGlobal(
-    'fetch',
-    routeFetch({
-      '/api/setup/status': () => jsonResponse({ setupRequired: false }),
-      '/api/auth/me': () => problem('Bitte melde dich an.', 401, 'UNAUTHENTICATED'),
-      '/api/auth/login': () => jsonResponse(admin),
-      '/api/auth/logout': () => new Response(null, { status: 204 }),
-      '/api/status': () => jsonResponse({ status: 'UP', application: 'was-essen-wir' }),
-    }),
-  );
+  const fetchMock = routeFetch({
+    '/api/setup/status': () => jsonResponse({ setupRequired: false }),
+    '/api/auth/me': () => problem('Bitte melde dich an.', 401, 'UNAUTHENTICATED'),
+    '/api/auth/login': () => jsonResponse(admin),
+    '/api/auth/logout': () => new Response(null, { status: 204 }),
+    '/api/status': () => jsonResponse({ status: 'UP', application: 'was-essen-wir' }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
 
   renderApp();
   expect(await screen.findByRole('heading', { name: 'Anmelden' })).toBeInTheDocument();
+  expect(screen.getByRole('checkbox', { name: 'Angemeldet bleiben' })).not.toBeChecked();
   await userEvent.type(screen.getByTestId('login-username'), 'ada');
   await userEvent.type(screen.getByTestId('login-password'), 'ein-langes-passwort');
   await userEvent.click(screen.getByTestId('login-submit'));
   expect(await screen.findByRole('heading', { name: 'Was essen wir heute?' })).toBeInTheDocument();
+  const loginCall = fetchMock.mock.calls.find((call) => String(call[0]).includes('/api/auth/login'));
+  expect(JSON.parse(String(loginCall?.[1]?.body))).toEqual({
+    username: 'ada',
+    password: 'ein-langes-passwort',
+    rememberMe: false,
+  });
   await userEvent.click(screen.getByRole('link', { name: 'Mehr' }));
   expect(await screen.findByRole('link', { name: 'Familie' })).toBeInTheDocument();
   await userEvent.click(screen.getByTestId('logout'));
   expect(await screen.findByRole('heading', { name: 'Anmelden' })).toBeInTheDocument();
   expect(screen.getByRole('alert')).toHaveTextContent('Du bist abgemeldet.');
+});
+
+test('sendet Angemeldet bleiben nur wenn die Checkbox gesetzt ist', async () => {
+  const fetchMock = routeFetch({
+    '/api/setup/status': () => jsonResponse({ setupRequired: false }),
+    '/api/auth/me': () => problem('Bitte melde dich an.', 401, 'UNAUTHENTICATED'),
+    '/api/auth/login': () => jsonResponse(admin),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  renderApp();
+  await screen.findByRole('heading', { name: 'Anmelden' });
+  await userEvent.type(screen.getByTestId('login-username'), 'ada');
+  await userEvent.type(screen.getByTestId('login-password'), 'ein-langes-passwort');
+  await userEvent.click(screen.getByTestId('login-remember'));
+  await userEvent.click(screen.getByTestId('login-submit'));
+  expect(await screen.findByRole('heading', { name: 'Was essen wir heute?' })).toBeInTheDocument();
+  const loginCall = fetchMock.mock.calls.find((call) => String(call[0]).includes('/api/auth/login'));
+  expect(JSON.parse(String(loginCall?.[1]?.body))).toMatchObject({ rememberMe: true });
+});
+
+test('zeigt bei der Wiederanmeldung keine Login-Seite', async () => {
+  let resolveMe: (value: Response) => void = () => undefined;
+  const me = new Promise<Response>((resolve) => {
+    resolveMe = resolve;
+  });
+  vi.stubGlobal(
+    'fetch',
+    routeFetch({
+      '/api/setup/status': () => jsonResponse({ setupRequired: false }),
+      '/api/auth/me': () => me,
+    }),
+  );
+
+  renderApp();
+  expect(screen.getByText('Anmeldung wird geprüft …')).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Anmelden' })).not.toBeInTheDocument();
+  resolveMe(jsonResponse(admin));
+  expect(await screen.findByRole('heading', { name: 'Was essen wir heute?' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Anmelden' })).not.toBeInTheDocument();
 });
 
 test('zeigt eine verständliche Meldung bei falschem Passwort', async () => {

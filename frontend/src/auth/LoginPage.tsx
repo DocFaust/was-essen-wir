@@ -1,5 +1,7 @@
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
+import Checkbox, { type CheckboxProps } from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -12,6 +14,7 @@ export function LoginPage() {
   const { notice, setUser, clearNotice } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -21,7 +24,7 @@ export function LoginPage() {
     setError(null);
     clearNotice();
     try {
-      setUser(await login(username, password));
+      setUser(await login(username, password, remember));
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Die Anmeldung ist fehlgeschlagen.');
       setSaving(false);
@@ -58,6 +61,22 @@ export function LoginPage() {
         required
         fullWidth
         slotProps={{ htmlInput: { 'data-testid': 'login-password' } }}
+      />
+      <FormControlLabel
+        label="Angemeldet bleiben"
+        sx={{ mx: 0, minHeight: 48, alignItems: 'center' }}
+        control={
+          <Checkbox
+            checked={remember}
+            onChange={(event) => setRemember(event.target.checked)}
+            sx={{ p: 1.5 }}
+            slotProps={{
+              input: {
+                'data-testid': 'login-remember',
+              } as NonNullable<NonNullable<CheckboxProps['slotProps']>['input']>,
+            }}
+          />
+        }
       />
       <Button type="submit" variant="contained" fullWidth disabled={saving} data-testid="login-submit">
         Anmelden

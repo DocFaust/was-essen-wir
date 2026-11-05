@@ -21,10 +21,12 @@ public class ActiveUserFilter extends OncePerRequestFilter {
 
     private final UserRepository users;
     private final UserSessions sessions;
+    private final RememberMeService rememberMe;
 
-    public ActiveUserFilter(UserRepository users, UserSessions sessions) {
+    public ActiveUserFilter(UserRepository users, UserSessions sessions, RememberMeService rememberMe) {
         this.users = users;
         this.sessions = sessions;
+        this.rememberMe = rememberMe;
     }
 
     @Override
@@ -40,6 +42,8 @@ public class ActiveUserFilter extends OncePerRequestFilter {
         }
         StoredUser user = users.findById(principal.id()).orElse(null);
         if (user == null || !user.active()) {
+            rememberMe.revokeUser(principal.id());
+            rememberMe.forget(request, response);
             sessions.invalidateUser(principal.id());
             SecurityContextHolder.clearContext();
             HttpSession session = request.getSession(false);

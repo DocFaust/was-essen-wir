@@ -49,6 +49,10 @@ Gleichnamige Grundgerichte sind erlaubt, werden aber ohne ausdrückliche Bestät
 
 Genau eine Zeile. `token_hash` ist SHA-256 des Setup-Tokens. `expires_at` begrenzt die Gültigkeit, Standard 24 Stunden. `completed_at` beendet die Einrichtung dauerhaft; danach ist `token_hash` leer. Der Klartext des Tokens wird nicht gespeichert.
 
+## Dauerhafte Anmeldung `remember_me_token`
+
+Eine Zeile ist ein Browser. Der `selector` ist der Suchschlüssel im Cookie und kein Geheimnis. `token_hash` ist SHA-256 des geheimen Cookie-Anteils. `previous_token_hash` und `rotated_at` erlauben eine kurze überlappende Nutzung direkt nach der Rotation. `expires_at` beendet die Zeile, standardmäßig 30 Tage nach der Anmeldung; Rotation verlängert die Frist nicht. `created_at` bestimmt, welche Geräte bei mehr als acht Zeilen je Person entfernt werden. Der Klartext des Geheimnisses wird nicht gespeichert. Löschen der Person entfernt die Zeilen per Fremdschlüssel.
+
 ## Bewertung `rating`
 
 Eine Tabelle für beide Ziele, analog zu `ingredient`. Grundgericht und Variante teilen sich Benutzer, Sterne und Zeitstempel. Getrennte Tabellen würden dieselben Regeln doppelt führen und die gemeinsame Abfrage für die Übersicht erschweren. Ein Bewertungsziel ist immer genau eines: `dish_id` oder `variant_id`.
@@ -93,8 +97,8 @@ Gericht und Variante verwenden `ON DELETE SET NULL`. Die Zeile und der Snapshot 
 | --- | --- | --- |
 | `GET` | `/api/setup/status` | `{ "setupRequired": true/false }`, ohne Token oder Benutzernamen |
 | `POST` | `/api/setup` | `201` und der erste Administrator, genau einmal |
-| `POST` | `/api/auth/login` | angemeldete Person |
-| `POST` | `/api/auth/logout` | `204`, Session serverseitig ungültig |
+| `POST` | `/api/auth/login` | angemeldete Person; optionales `rememberMe` setzt nur ein Cookie, keinen Token in der Antwort |
+| `POST` | `/api/auth/logout` | `204`, Sitzung und das Remember-me-Token dieses Geräts ungültig |
 
 Angemeldet:
 
