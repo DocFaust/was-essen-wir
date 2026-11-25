@@ -32,8 +32,8 @@ test('zeigt einen leeren Tag, Standardwerte und Schnellaktionen ohne KI', async 
   expect(screen.getByTestId('quick-eaten')).toBeInTheDocument();
   expect(screen.getByTestId('quick-new-dish')).toHaveAttribute('href', '/gerichte/neu');
   expect(screen.getByTestId('quick-plan')).toHaveAttribute('href', '/plan');
-  expect(screen.getByRole('button', { name: 'Abendessen' })).toHaveAttribute('aria-pressed', 'true');
-  expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toHaveAttribute('aria-pressed', 'true');
+  expect(await screen.findByRole('button', { name: 'Abendessen' })).toHaveAttribute('aria-pressed', 'true');
+  expect(await screen.findByRole('button', { name: 'Ada Lovelace' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.queryByTestId('ai-assistant')).not.toBeInTheDocument();
 });
 
@@ -74,7 +74,7 @@ test('öffnet das Erfassen mit heutigem Datum und ohne Kommentarfeld', async () 
   await userEvent.click(screen.getByTestId('quick-eaten'));
   expect(await screen.findByRole('heading', { name: 'Als gegessen eintragen' })).toBeInTheDocument();
   expect(screen.getByTestId('meal-date')).toHaveValue(todayIso());
-  expect(screen.getByRole('button', { name: 'Abendessen' })).toHaveAttribute('aria-pressed', 'true');
+  expect(await screen.findByRole('button', { name: 'Abendessen' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.queryByTestId('meal-comment')).not.toBeInTheDocument();
   expect(screen.getByTestId('meal-save')).toBeInTheDocument();
 });
