@@ -68,6 +68,7 @@ class AiOpenAiIntegrationTest {
         registry.add("app.ai.openai.api-key", () -> API_KEY);
         registry.add("app.ai.openai.model", () -> "gpt-test");
         registry.add("app.ai.openai.timeout", () -> "2s");
+        AiTestSupport.disableUsageLimits(registry);
     }
 
     @Autowired

@@ -148,6 +148,7 @@ class AiRateLimitIntegrationTest {
         assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
         TestRestTemplate member = new ApiSessions(rawTemplate).open();
+        member.getForEntity("/api/setup/status", String.class);
         assertThat(member.postForEntity("/api/auth/login", new LoginRequest(username, "temporaer-pass"), String.class)
                 .getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(member.exchange(
