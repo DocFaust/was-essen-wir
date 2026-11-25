@@ -15,6 +15,7 @@ const env = {
   E2E_BASE_URL: `http://127.0.0.1:${port}`,
   AI_ENABLED: 'true',
   AI_PROVIDER: 'fixture',
+  AI_ALLOW_FIXTURE: 'true',
 };
 
 const compose = ['compose', '--project-name', project, '-f', 'compose.yaml'];

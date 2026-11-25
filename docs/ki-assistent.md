@@ -5,25 +5,21 @@ Iteration 7 ergänzt eine optionale Interpretationsschicht. Natürlichsprachlich
 ## Architektur
 
 ```text
-POST /api/ai/recommendations
+POST /api/ai/recommendations  (und /api/ai/dish-drafts)
         |
         v
-AI Assistant Service
+AI Service
         |
-        +-- Intent Prompt und Provider
+        +-- AiProviderGateway (Nutzungs- und Parallelitätslimits)
         |       +-- Ollama
         |       +-- OpenAI
-        |       +-- Fixture (nur Tests)
+        |       +-- Fixture (nur Tests / AI_ALLOW_FIXTURE)
         |
         +-- Validierung
-        +-- lokale Namensauflösung
-        +-- Katalogabgleich
+        +-- lokale Namensauflösung / Entwurfslogik
         |
         v
-Recommendation Service
-        |
-        v
-Antwort mit Kriterien, Begründung und bis zu drei Vorschlägen
+Antwort (Vorschläge bzw. Entwurf)
 ```
 
 `GET /api/ai/status` sagt der Oberfläche, ob der Assistent aktiv ist und welcher Provider konfiguriert ist. Die Antwort enthält keine Adresse und keinen Schlüssel.
@@ -38,6 +34,15 @@ app:
     enabled: ${AI_ENABLED:false}
     provider: ${AI_PROVIDER:ollama}
     max-input-length: ${AI_MAX_INPUT_LENGTH:500}
+    max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:1024}
+    allow-fixture: ${AI_ALLOW_FIXTURE:false}
+    rate-limit:
+      per-user-per-minute: ${AI_RATE_LIMIT_PER_USER_PER_MINUTE:5}
+      per-user-per-day: ${AI_RATE_LIMIT_PER_USER_PER_DAY:50}
+      global-per-day: ${AI_RATE_LIMIT_GLOBAL_PER_DAY:150}
+      max-concurrent-per-user: ${AI_MAX_CONCURRENT_PER_USER:1}
+      max-concurrent-global: ${AI_MAX_CONCURRENT_GLOBAL:3}
+      max-tracked-users: ${AI_RATE_LIMIT_MAX_TRACKED_USERS:1000}
     ollama:
       base-url: ${OLLAMA_BASE_URL:http://127.0.0.1:11434}
       model: ${OLLAMA_MODEL:qwen3.5:9b}
@@ -49,7 +54,31 @@ app:
       timeout: ${OPENAI_TIMEOUT:30s}
 ```
 
-Der Provider wird nur über `AI_PROVIDER` gewählt: `ollama` oder `openai`. Ein Wechsel braucht keine Codeänderung. `fixture` ist ein Testdouble ohne Netz und nicht für den Alltag gedacht. Eine weitere Beschränkung des Fixture-Providers auf den Testbetrieb sowie Rate-Limiting, Parallelitätsgrenzen und Schutz vor unkontrollierten API-Kosten bei externen Providern sind in Iteration 10.3 geplant und noch nicht umgesetzt.
+Der Provider wird nur über `AI_PROVIDER` gewählt: `ollama` oder `openai`. Ein Wechsel braucht keine Codeänderung. `fixture` ist ein Testdouble ohne Netz und nur mit Spring-Profil `test` oder `AI_ALLOW_FIXTURE=true` zulässig. Ungültige Grenzwerte und Timeouts werden beim Start abgewiesen.
+
+## Nutzungslimits
+
+Alle Provider-Aufrufe (Essensvorschläge und Gerichteentwurf) teilen dieselben In-Memory-Grenzen einer Backend-Instanz. Die Zuordnung erfolgt über die angemeldete Benutzer-ID, unabhängig vom Provider. Die Prüfung liegt vor dem externen Aufruf; abgelehnte Anfragen erzeugen keine Provider-Kosten. Gestartete Aufrufe zählen auch bei Fehler oder Timeout. Parallele Anfragen werden hart begrenzt und bei ausgeschöpfter Kapazität sofort mit 429 abgelehnt – ohne Warteschlange. Freigabe der Parallelitätsplätze erfolgt zuverlässig nach Ende des Provider-Aufrufs.
+
+| Grenze | Standard |
+| --- | --- |
+| pro Benutzer und Minute | 5 |
+| pro Benutzer und Tag | 50 |
+| insgesamt pro Tag | 150 |
+| parallel pro Benutzer | 1 |
+| parallel insgesamt | 3 |
+
+Tagesgrenzen folgen `app.time-zone` (Standard `Europe/Berlin`). Abgelaufene Minutenfenster und inaktive Tageszähler werden bereinigt; die Zahl gehaltener Benutzerkennungen ist durch `AI_RATE_LIMIT_MAX_TRACKED_USERS` begrenzt. Bei einem Backend-Neustart gehen die Zähler verloren (bewusst akzeptiert). Es gibt keine Datenbank- oder Redis-Persistenz.
+
+Die Limits begrenzen das Anfragevolumen und sind **kein** garantiertes finanzielles Ausgabenlimit. Zusätzliche Nutzungs- und Kostenkontrollen des jeweiligen externen Providers bleiben empfohlen. Eigene Abrechnungslogik gibt es nicht.
+
+## Timeouts
+
+- Provider-Timeout: Standard 30 Sekunden (`OLLAMA_TIMEOUT` / `OPENAI_TIMEOUT`), höchstens 2 Minuten.
+- Internes Nginx für `/api/ai/`: 45 Sekunden Lese- und Sende-Timeout; übrige `/api/`-Pfade bleiben bei 10 Sekunden.
+- Provider-Timeouts müssen unter dem Proxy-Timeout bleiben, sonst bricht Nginx vor dem Backend ab.
+- Es gibt keine automatischen Provider-Retries.
+- Generierte Tokens sind über `AI_MAX_OUTPUT_TOKENS` (Standard 1024) begrenzt; Antwortkörper bleiben auf 32 KiB begrenzt.
 
 `127.0.0.1` im Backend-Container ist der Container selbst, nicht ein anderer Rechner. `host.docker.internal` ist unter Linux keine verlässliche Adresse für einen anderen Rechner im Heimnetz. Ollama auf einem anderen Gerät erreicht man über seine LAN-Adresse oder einen DNS-Namen:
 
@@ -185,6 +214,8 @@ Die Antwort enthält `reply`, `clarificationQuestion`, `criteria`, `suggestions`
 | nicht angemeldet | `401` |
 | ohne CSRF | `403` |
 | leere oder zu lange Eingabe | `400` |
+| Minutenlimit oder vorübergehende Auslastung | `429`, `AI_RATE_LIMITED` oder `AI_BUSY`, optional `Retry-After` |
+| Tageslimit (Benutzer oder global) | `429`, `AI_DAILY_LIMIT`, optional `Retry-After` |
 | Provider nicht erreichbar oder nicht konfiguriert | `503`, `AI_UNAVAILABLE` |
 | Zeitüberschreitung | `504`, `AI_TIMEOUT` |
 | ungültige Modellausgabe | `502`, `AI_INVALID` |
@@ -210,7 +241,7 @@ Bei Ollama verlässt die Anfrage das Backend in Richtung des konfigurierten Serv
 
 Die Startseite zeigt „Frag den Essensassistenten“ nur, wenn der Status `enabled` ist, und zwar unter der regelbasierten Auswahl. Die klassische Auswahl bleibt darüber vollständig nutzbar. Die Oberfläche zeigt die kurze Antwort, die tatsächlich verwendeten Kriterien und die vorhandenen Gerichtskarten. Einplanen und als gegessen erfassen verwenden Datum, Mahlzeit und aufgelöste Mitessende aus den Kriterien. Die Mitessenden für diese Übernahme lädt die Oberfläche erst, wenn jemand einen Vorschlag übernimmt.
 
-Technische Fehler nennen keine Adressen, Schlüssel oder Stacktraces. „Erneut versuchen“ sendet dieselbe Anfrage einmal erneut, „Neue Anfrage“ leert das Formular.
+Technische Fehler nennen keine Adressen, Schlüssel oder Stacktraces. Bei vorübergehender Auslastung zeigt „Erneut versuchen“ dieselbe Anfrage manuell erneut; beim Tageslimit entfällt dieser Knopf. „Neue Anfrage“ leert das Formular. Während einer laufenden Anfrage bleiben die Schaltflächen gesperrt, damit keine versehentlichen Mehrfachaufrufe entstehen.
 
 ## Grenzen der ersten Version
 
@@ -275,6 +306,7 @@ Bei einem neuen Gericht gehen an den Provider nur die Beschreibung, die erlaubte
 | Situation | Verhalten |
 | --- | --- |
 | KI deaktiviert | `404`, `AI_DISABLED`; die manuelle Erfassung bleibt, die KI-Option erscheint nicht |
+| Nutzungslimit | `429` wie bei den Vorschlägen; gemeinsames Kontingent |
 | Provider nicht erreichbar | `503`, `AI_UNAVAILABLE` |
 | Timeout | `504`, `AI_TIMEOUT` |
 | ungültiges JSON, Enum oder Schema | `502`, `AI_INVALID` |

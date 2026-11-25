@@ -2,9 +2,9 @@
 
 Selbst gehosteter Familien-Essensplaner für genau eine Familie pro Installation. Mobile-first, ohne öffentliche Registrierung und ohne Multi-Tenancy. Die Anwendung bleibt eine private Familienanwendung, auch wenn sie später über das Internet erreichbar ist.
 
-**Stand Iteration 9 (fachlich):** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Wochenplan und Essenshistorie. Die Startseite beantwortet „Was essen wir heute?“ und hält Vorschläge, Einplanen und das Erfassen von Gegessenem mit wenigen Taps erreichbar. Die Navigation ist Heute, Plan, Gerichte, Historie und Mehr. Kürzlich gegessene und bereits geplante Gerichte beeinflussen neue Vorschläge. Sichtbar bleiben nur die eigenen Bewertungen. Ein optionaler Essensassistent übersetzt natürlichsprachliche Wünsche; die Auswahl bleibt regelbasiert und funktioniert auch ohne ihn. Dieselbe optionale KI kann eine Beschreibung in einen prüfbaren Entwurf für ein Gericht oder eine Variante übersetzen. Gespeichert wird erst im vorhandenen Formular. Ohne `AI_ENABLED=true` gibt es keine KI-Verbindung und die manuelle Erfassung bleibt vollständig. Der Ablauf steht in [`docs/ki-assistent.md`](docs/ki-assistent.md), die UX-Bewertung in [`docs/ux-review.md`](docs/ux-review.md).
+**Stand Iteration 10.3:** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Wochenplan und Essenshistorie. Die Startseite beantwortet „Was essen wir heute?“ und hält Vorschläge, Einplanen und das Erfassen von Gegessenem mit wenigen Taps erreichbar. Die Navigation ist Heute, Plan, Gerichte, Historie und Mehr. Ein optionaler Essensassistent und die KI-Gerichteerfassung laufen nur serverseitig; ohne `AI_ENABLED=true` gibt es keine KI-Verbindung. KI-Aufrufe unterliegen gemeinsamen Nutzungslimits und Parallelitätsgrenzen. Der Ablauf steht in [`docs/ki-assistent.md`](docs/ki-assistent.md), die UX-Bewertung in [`docs/ux-review.md`](docs/ux-review.md).
 
-**Betrieb:** Der private HTTP-Betrieb im Heimnetz ist umgesetzt und bleibt unterstützt. Ein öffentlicher Betrieb hinter HTTPS (geplant unter `https://essen.faustens.de`) ist architektonisch beschlossen, aber erst nach der Sicherheitshärtung in Iteration 10 freigegeben. Details stehen in [`docs/architektur.md`](docs/architektur.md) und [`docs/roadmap.md`](docs/roadmap.md).
+**Betrieb:** Der private HTTP-Betrieb im Heimnetz ist umgesetzt und bleibt unterstützt. Ein öffentlicher Betrieb hinter HTTPS (geplant unter `https://essen.faustens.de`) ist architektonisch beschlossen, aber erst nach Abschluss von Iteration 10 freigegeben. Details stehen in [`docs/architektur.md`](docs/architektur.md) und [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Voraussetzungen
 
@@ -32,9 +32,16 @@ In `.env` ein eigenes `POSTGRES_PASSWORD` setzen. Die Datei bleibt lokal und ist
 | `APP_TIME_ZONE` | Kalendertag des Backends für „heute“, Standard `Europe/Berlin` |
 | `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | Backend auf dem Host, außerhalb von Compose |
 | `AI_ENABLED` | Essensassistent, Standard `false` |
-| `AI_PROVIDER` | `ollama` oder `openai`, Standard `ollama` |
-| `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_TIMEOUT` | Ollama im LAN, Standard `http://127.0.0.1:11434`, `qwen3.5:9b`, `30s` |
-| `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT` | nur im Backend, Standardmodell `gpt-4.1-mini` |
+| `AI_PROVIDER` | `ollama` oder `openai`, Standard `ollama`; `fixture` nur mit Profil `test` oder `AI_ALLOW_FIXTURE=true` |
+| `AI_ALLOW_FIXTURE` | Fixture-Provider außerhalb des Testprofils, Standard `false` |
+| `AI_MAX_OUTPUT_TOKENS` | Obergrenze generierter Tokens, Standard `1024` |
+| `AI_RATE_LIMIT_PER_USER_PER_MINUTE` | KI-Anfragen pro Benutzer und Minute, Standard `5` |
+| `AI_RATE_LIMIT_PER_USER_PER_DAY` | KI-Anfragen pro Benutzer und Tag, Standard `50` |
+| `AI_RATE_LIMIT_GLOBAL_PER_DAY` | KI-Anfragen insgesamt pro Tag, Standard `150` |
+| `AI_MAX_CONCURRENT_PER_USER` | parallele KI-Anfragen pro Benutzer, Standard `1` |
+| `AI_MAX_CONCURRENT_GLOBAL` | parallele KI-Anfragen insgesamt, Standard `3` |
+| `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_TIMEOUT` | Ollama im LAN, Standard `http://127.0.0.1:11434`, `qwen3.5:9b`, `30s` (unter Nginx-`/api/ai/`-Timeout 45s halten) |
+| `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TIMEOUT` | nur im Backend, Standardmodell `gpt-4.1-mini`, Timeout `30s` |
 
 ## Lokaler Entwicklungsstart
 

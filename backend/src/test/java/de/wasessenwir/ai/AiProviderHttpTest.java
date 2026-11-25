@@ -36,15 +36,20 @@ class AiProviderHttpTest {
         start("/api/chat", 200, ollamaBody("{\"version\":1}"));
         AiProperties.Ollama properties = ollama(url(), "test-model", Duration.ofSeconds(2));
 
-        String content = new OllamaAiProvider(properties, mapper).interpret("System", "Heute Abend");
+        String content = new OllamaAiProvider(properties, 1024, mapper).interpret("System", "Heute Abend");
 
         assertThat(content).isEqualTo("{\"version\":1}");
         assertThat(requests).hasSize(1);
         assertThat(requests.getFirst().path()).isEqualTo("/api/chat");
-        assertThat(requests.getFirst().body()).contains("\"model\":\"test-model\"").contains("Heute Abend").contains("\"format\":\"json\"");
+        assertThat(requests.getFirst().body())
+                .contains("\"model\":\"test-model\"")
+                .contains("Heute Abend")
+                .contains("\"format\":\"json\"")
+                .contains("\"num_predict\":1024");
         assertThat(requests.getFirst().authorization()).isNull();
 
-        assertThatThrownBy(() -> new OllamaAiProvider(ollama("http://127.0.0.1:" + closedPort(), "test-model", Duration.ofMillis(500)), mapper)
+        assertThatThrownBy(() -> new OllamaAiProvider(
+                        ollama("http://127.0.0.1:" + closedPort(), "test-model", Duration.ofMillis(500)), 1024, mapper)
                 .interpret("System", "Heute"))
                 .isInstanceOf(AiProviderException.class)
                 .extracting(exception -> ((AiProviderException) exception).kind())
@@ -63,7 +68,7 @@ class AiProviderHttpTest {
         });
         AiProperties.Ollama properties = ollama(url(), "test-model", Duration.ofMillis(300));
 
-        assertThatThrownBy(() -> new OllamaAiProvider(properties, mapper).interpret("System", "Heute"))
+        assertThatThrownBy(() -> new OllamaAiProvider(properties, 1024, mapper).interpret("System", "Heute"))
                 .isInstanceOf(AiProviderException.class)
                 .extracting(exception -> ((AiProviderException) exception).kind())
                 .isEqualTo(AiProviderException.Kind.TIMEOUT);
@@ -74,13 +79,14 @@ class AiProviderHttpTest {
         start("/v1/chat/completions", 200, openAiBody("{\"version\":1}"));
         AiProperties.OpenAi properties = openAi(url(), "sk-test-not-a-secret", "gpt-test");
 
-        String content = new OpenAiAiProvider(properties, mapper).interpret("System JSON", "Nudeln");
+        String content = new OpenAiAiProvider(properties, 1024, mapper).interpret("System JSON", "Nudeln");
 
         assertThat(content).isEqualTo("{\"version\":1}").doesNotContain("sk-test-not-a-secret");
         assertThat(requests.getFirst().path()).isEqualTo("/v1/chat/completions");
         assertThat(requests.getFirst().authorization()).isEqualTo("Bearer sk-test-not-a-secret");
         assertThat(requests.getFirst().body())
                 .contains("\"type\":\"json_schema\"")
+                .contains("\"max_tokens\":1024")
                 .contains("Nudeln")
                 .doesNotContain("sk-test-not-a-secret");
     }

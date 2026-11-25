@@ -28,7 +28,7 @@ public class AiAssistantService {
     private static final int HARD_INPUT_LIMIT = 2_000;
 
     private final AiProperties properties;
-    private final AiProvider provider;
+    private final AiProviderGateway provider;
     private final IntentValidator validator;
     private final UserRepository users;
     private final CatalogRepository catalog;
@@ -37,7 +37,7 @@ public class AiAssistantService {
 
     public AiAssistantService(
             AiProperties properties,
-            AiProvider provider,
+            AiProviderGateway provider,
             IntentValidator validator,
             UserRepository users,
             CatalogRepository catalog,
@@ -57,8 +57,7 @@ public class AiAssistantService {
         if (!properties.enabled()) {
             return new AiStatusResponse(false, null);
         }
-        String providerName = properties.provider() == null ? "" : properties.provider().trim().toLowerCase(Locale.ROOT);
-        return new AiStatusResponse(true, providerName);
+        return new AiStatusResponse(true, properties.normalizedProvider());
     }
 
     public AiRecommendationResponse recommend(AiRecommendationRequest request) {
@@ -70,7 +69,7 @@ public class AiAssistantService {
         LocalDate today = LocalDate.now(clock);
         MealIntent intent;
         try {
-            intent = validator.parse(interpret(message, today));
+            intent = validator.parse(interpret(currentUserId, message, today));
         } catch (AiProviderException exception) {
             throw failure(exception);
         }
@@ -129,9 +128,9 @@ public class AiAssistantService {
                 result.explanation());
     }
 
-    private String interpret(String message, LocalDate today) {
+    private String interpret(UUID userId, String message, LocalDate today) {
         try {
-            return provider.interpret(IntentPrompt.system(today), message);
+            return provider.interpret(userId, IntentPrompt.system(today), message);
         } catch (AiProviderException exception) {
             throw failure(exception);
         }

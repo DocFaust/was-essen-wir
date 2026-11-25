@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography';
 import { useEffect, useRef, useState } from 'react';
 import { MEAL_TYPE_LABELS } from '../dishes/labels';
 import { ErrorState, LoadingState, SuccessSnackbar } from '../dishes/ui';
-import { ApiError } from '../http';
+import { aiErrorMessage, canRetryAiError } from '../aiErrors';
 import { createHistory, createPlan } from '../meals/api';
 import { MealEventForm } from '../meals/MealEventForm';
 import type { MealDraft, MealEventWrite } from '../meals/types';
@@ -21,6 +21,7 @@ export function AiAssistant({ userId, onRecorded }: { userId: string; onRecorded
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryable, setRetryable] = useState(true);
   const [result, setResult] = useState<AiRecommendationResponse | null>(null);
   const [excluded, setExcluded] = useState<string[]>([]);
   const [mealDraft, setMealDraft] = useState<MealDraft | null>(null);
@@ -51,19 +52,21 @@ export function AiAssistant({ userId, onRecorded }: { userId: string; onRecorded
 
   async function submit() {
     const text = message.trim();
-    if (!text || submitting.current) {
+    if (!text || submitting.current || loading) {
       return;
     }
     submitting.current = true;
     setLoading(true);
     setError(null);
+    setRetryable(true);
     setResult(null);
     setExcluded([]);
     try {
       setResult(await aiRecommend(text));
     } catch (caught) {
       setResult(null);
-      setError(caught instanceof ApiError ? caught.message : 'Der Essensassistent ist gerade nicht erreichbar.');
+      setError(aiErrorMessage(caught, 'Der Essensassistent ist gerade nicht erreichbar.'));
+      setRetryable(canRetryAiError(caught));
     } finally {
       submitting.current = false;
       setLoading(false);
@@ -90,6 +93,7 @@ export function AiAssistant({ userId, onRecorded }: { userId: string; onRecorded
     setMessage('');
     setResult(null);
     setError(null);
+    setRetryable(true);
     setExcluded([]);
   }
 
@@ -134,7 +138,7 @@ export function AiAssistant({ userId, onRecorded }: { userId: string; onRecorded
       ) : null}
       {error ? (
         <Stack spacing={1.5} data-testid="ai-error">
-          <ErrorState message={error} onRetry={() => void submit()} />
+          <ErrorState message={error} onRetry={retryable ? () => void submit() : undefined} />
           <Typography variant="body2">Die gewohnte Vorschlagsauswahl darüber funktioniert weiterhin.</Typography>
           <Button type="button" variant="text" fullWidth onClick={reset}>
             Neue Anfrage

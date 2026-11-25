@@ -3,7 +3,8 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import { useRef, useState } from 'react';
-import { ApiError, createDishDraft } from './api';
+import { aiErrorMessage, canRetryAiError } from '../aiErrors';
+import { createDishDraft } from './api';
 import type { DishDraft, DraftKind } from './draft';
 import { ErrorState, LoadingState } from './ui';
 
@@ -21,17 +22,19 @@ export function CapturePanel({
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryable, setRetryable] = useState(true);
   const [candidates, setCandidates] = useState<DishDraft['candidates']>([]);
   const submitting = useRef(false);
 
   async function submit(selectedBaseDishId?: string) {
     const text = description.trim();
-    if (!text || submitting.current) {
+    if (!text || submitting.current || loading) {
       return;
     }
     submitting.current = true;
     setLoading(true);
     setError(null);
+    setRetryable(true);
     try {
       const draft = await createDishDraft({
         description: text,
@@ -46,7 +49,8 @@ export function CapturePanel({
       onDraft(draft);
     } catch (caught) {
       setCandidates([]);
-      setError(caught instanceof ApiError ? caught.message : 'Der Entwurf konnte nicht erstellt werden.');
+      setError(aiErrorMessage(caught, 'Der Entwurf konnte nicht erstellt werden.'));
+      setRetryable(canRetryAiError(caught));
     } finally {
       submitting.current = false;
       setLoading(false);
@@ -69,7 +73,7 @@ export function CapturePanel({
       {loading ? <LoadingState label="Entwurf wird erstellt …" /> : null}
       {error ? (
         <Stack spacing={1}>
-          <ErrorState message={error} onRetry={() => void submit()} />
+          <ErrorState message={error} onRetry={retryable ? () => void submit() : undefined} />
           <Button type="button" variant="outlined" fullWidth onClick={onManual} data-testid="draft-manual">
             Manuell erfassen
           </Button>

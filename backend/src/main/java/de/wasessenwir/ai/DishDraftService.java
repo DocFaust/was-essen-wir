@@ -26,14 +26,14 @@ public class DishDraftService {
             "recipeSource", "comments", "mealPrep", "homeOffice");
 
     private final AiProperties properties;
-    private final AiProvider provider;
+    private final AiProviderGateway provider;
     private final DishDraftValidator validator;
     private final CatalogRepository catalog;
     private final DishRepository dishes;
 
     public DishDraftService(
             AiProperties properties,
-            AiProvider provider,
+            AiProviderGateway provider,
             DishDraftValidator validator,
             CatalogRepository catalog,
             DishRepository dishes) {
@@ -46,7 +46,7 @@ public class DishDraftService {
 
     @Transactional(readOnly = true)
     public DishDraftResponse create(DishDraftRequest request) {
-        CurrentUser.requireId();
+        UUID userId = CurrentUser.requireId();
         if (!properties.enabled()) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Der Essensassistent ist nicht aktiviert.", "AI_DISABLED");
         }
@@ -62,7 +62,10 @@ public class DishDraftService {
         DishDraftFacts facts;
         try {
             facts = validator.accept(
-                    provider.draft(DishDraftPrompt.system(request.kind(), base.name(), base.ingredients()), description),
+                    provider.draft(
+                            userId,
+                            DishDraftPrompt.system(request.kind(), base.name(), base.ingredients()),
+                            description),
                     description,
                     request.kind());
         } catch (AiProviderException exception) {
