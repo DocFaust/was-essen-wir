@@ -12,7 +12,8 @@ RUN groupadd --system app \
 WORKDIR /app
 COPY --from=build /src/build/libs/app.jar app.jar
 COPY healthcheck.sh /healthcheck.sh
-RUN chmod 755 /healthcheck.sh
+RUN chmod 755 /healthcheck.sh \
+    && chown app:app /app/app.jar
 USER app
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

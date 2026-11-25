@@ -138,7 +138,9 @@ jobs:
           POSTGRES_USER: wasessenwir
           POSTGRES_PASSWORD: ci-validation-only
           APP_PORT: "8080"
-        run: docker compose -f compose.yaml config --quiet
+        run: |
+          docker compose -f compose.yaml config --quiet
+          APP_PORT=8182 ./scripts/validate-compose-prod.sh
 
   arm64:
     name: ARM64

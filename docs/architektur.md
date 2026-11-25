@@ -11,7 +11,7 @@
 - Betrieb: Docker Compose. Unterstützte Plattformen: `linux/amd64` und `linux/arm64`. Der Raspberry Pi bleibt eine unterstützte Plattform. Entwicklung auf Windows und Linux.
 - Betriebsmodi:
   - **Heimnetz (umgesetzt):** privater HTTP-Betrieb im lokalen Netz. `APP_SESSION_COOKIE_SECURE` bleibt dafür `false`.
-  - **Öffentlich (beschlossen, noch nicht freigegeben):** Betrieb hinter einem HTTPS-Reverse-Proxy, geplant auf einem bestehenden Netcup-Rootserver unter `https://essen.faustens.de`. Der interne HTTP-Port darf nicht direkt aus dem Internet erreichbar sein. Backend und PostgreSQL bleiben intern und werden nicht öffentlich exponiert. Secure-Cookies sind in diesem Profil verpflichtend. Die konkrete Reverse-Proxy-Technologie ist noch nicht festgelegt. Der öffentliche Betrieb ist erst nach Abschluss der Sicherheitshärtung in Iteration 10 freigegeben.
+  - **Öffentlich (umgesetzt, noch nicht freigegeben):** Betrieb hinter dem bestehenden Host-Nginx mit TLS-Terminierung, geplant unter `https://essen.faustens.de` (`compose.yaml` + `compose.prod.yaml`). Das Frontend lauscht nur auf `127.0.0.1`. Backend und PostgreSQL bleiben ohne veröffentlichte Ports. Secure-Cookies sind verpflichtend (`APP_REQUIRE_SECURE_COOKIES`). Keine Keycloak-/OAuth-Infrastruktur. Anleitung in [`deployment.md`](deployment.md). Der öffentliche Produktivstart ist erst nach Iteration 10.5 freigegeben.
 - Konfiguration über Umgebungsvariablen. `.env` bleibt lokal. `.env.example` enthält keine echten Geheimnisse.
 - Authentifizierung: Spring Security mit lokaler Benutzerverwaltung, serverseitigen HTTP-Sessions und optionalem Remember-me. Keine Keycloak-, OAuth2-, JWT- oder separate Authentifizierungsinfrastruktur. Keine öffentliche Selbstregistrierung und keine E-Mail-Verifizierung.
 - KI optional über eine austauschbare Provider-Abstraktion. Ollama und die OpenAI-Chat-Completions-API laufen nur serverseitig. Die KI erhält keinen Datenbankzugriff, wählt keine Gerichte selbst und speichert keine Gerichte. Kernfunktionen bleiben ohne LLM nutzbar. Missbrauch und unkontrollierte API-Kosten bei externen Providern werden durch serverseitige Nutzungslimits, Parallelitätsgrenzen und Ausgabe-Token-Begrenzung eingedämmt (Iteration 10.3). Die Limits begrenzen das Anfragevolumen und sind kein garantiertes Ausgabenlimit; zusätzliche Provider-Kontrollen bleiben empfohlen. Der Ablauf steht in [`ki-assistent.md`](ki-assistent.md).
@@ -30,7 +30,7 @@ Lokale Benutzer mit den Rollen `ADMIN` und `MEMBER`. Passwörter liegen als BCry
 
 Solange kein Administrator existiert, ist die Einrichtung offen. Das Backend erzeugt dafür ein zufälliges Setup-Token, speichert nur seinen SHA-256-Hash und schreibt das Token einmalig ins Log. Die Ersteinrichtung prüft dieses Token in einer Datenbanktransaktion mit Sperre und kann genau einmal gelingen. Danach ist das Token ungültig, auch nach einem Neustart.
 
-`APP_SESSION_COOKIE_SECURE` steht standardmäßig auf `false`, weil das Heimnetz per HTTP erreichbar ist. Browser verwerfen `Secure`-Cookies auf reinem HTTP. Beim öffentlichen HTTPS-Betrieb muss die Variable auf `true` stehen; das verpflichtende Secure-Cookie-Profil dafür ist Teil von Iteration 10.4 und noch nicht als eigenes Betriebsprofil umgesetzt. Dieselbe Variable gilt für das Remember-me-Cookie.
+`APP_SESSION_COOKIE_SECURE` steht standardmäßig auf `false`, weil das Heimnetz per HTTP erreichbar ist. Browser verwerfen `Secure`-Cookies auf reinem HTTP. `compose.prod.yaml` setzt Secure-Cookies verpflichtend (`APP_SESSION_COOKIE_SECURE=true`, `APP_REQUIRE_SECURE_COOKIES=true`) für Sitzung, Remember-me und CSRF. Unsichere Kombinationen lehnt das Backend beim Start ab.
 
 Optional kann sich eine Person auf einem Gerät bis zu 30 Tage angemeldet halten (`APP_REMEMBER_ME_ENABLED`, `APP_REMEMBER_ME_DURATION`). Die Checkbox ist standardmäßig aus; ohne sie bleibt es bei der 12-Stunden-Sitzung. Das Cookie `WAEW_REMEMBER` ist `HttpOnly`, `SameSite=Lax` und trägt Selektor plus Geheimnis. PostgreSQL speichert nur den SHA-256 des Geheimnisses. Jede Wiederanmeldung rotiert das Geheimnis und legt eine normale Sitzung an. Eine überlappende Anfrage darf das gerade ersetzte Geheimnis noch 30 Sekunden verwenden. Danach widerruft eine Wiederverwendung alle dauerhaften Anmeldungen dieser Person. Abmelden gilt nur für das aktuelle Gerät. Passwortänderung, Passwortzurücksetzung und Deaktivierung widerrufen alle Geräte. Höchstens acht Tokens bleiben pro Person erhalten; abgelaufene Zeilen werden beim Anmelden und bei der Wiederanmeldung gelöscht. CSRF bleibt für zustandsändernde Aufrufe Pflicht. Der Klartext steht nicht in `localStorage`, nicht in der API und nicht in der Datenbank.
 
@@ -42,7 +42,7 @@ Persönliche Sternebewertungen liegen in einer gemeinsamen Tabelle für Grundger
 
 Im Standard-Compose ist PostgreSQL nicht auf dem Host veröffentlicht. Das Frontend ist der einzige veröffentlichte Dienst und leitet `/api` an das Backend weiter. Actuator bleibt im internen Backend-Netz und liefert keine Konfigurationsdetails. `GET /api/status` und `GET /actuator/health` bleiben ohne Anmeldung erreichbar, damit die bestehende Gesundheitsprüfung funktioniert. Sie enthalten keine Benutzer- oder Token-Daten. Alle Gerichte- und Benutzerendpunkte verlangen eine gültige Sitzung.
 
-Für den öffentlichen Betrieb gilt zusätzlich (beschlossen, Umsetzung in Iteration 10): Der Compose-HTTP-Port darf nicht direkt aus dem Internet erreichbar sein; der Zugang erfolgt ausschließlich über HTTPS am Reverse-Proxy. Backend und PostgreSQL bleiben weiterhin nur intern erreichbar.
+Für den öffentlichen Betrieb gilt zusätzlich: Der Compose-Frontend-Port ist an `127.0.0.1` gebunden; der Zugang erfolgt ausschließlich über HTTPS am Host-Nginx. Backend und PostgreSQL bleiben nur intern erreichbar.
 
 ## Iteration 5
 
@@ -66,7 +66,7 @@ Die Oberfläche priorisiert die täglichen Aufgaben, ohne neue Fachendpunkte. Di
 
 ## Iteration 10
 
-Public Deployment Hardening. Die Architekturentscheidungen für Heimnetz und öffentlichen HTTPS-Betrieb stehen oben. Umsetzung des öffentlichen Betriebsprofils und der Betriebssicherheit folgt in den Arbeitspaketen 10.4 und 10.5 laut [`roadmap.md`](roadmap.md). Bis zum Abschluss bleibt der produktive öffentliche Betrieb gesperrt.
+Public Deployment Hardening. Die Architekturentscheidungen für Heimnetz und öffentlichen HTTPS-Betrieb stehen oben. Betriebssicherheit (Backup, CI-Scans, Freigabe) folgt in 10.5 laut [`roadmap.md`](roadmap.md). Bis dahin bleibt der produktive öffentliche Betrieb gesperrt.
 
 ### Iteration 10.2 – Anwendungssicherheit
 
@@ -81,4 +81,13 @@ Public Deployment Hardening. Die Architekturentscheidungen für Heimnetz und öf
 - **Timeouts:** Provider-Standard 30s (`OLLAMA_TIMEOUT` / `OPENAI_TIMEOUT`). Internes Nginx für `/api/ai/` 45s Lese-/Sende-Timeout, übrige `/api/` 10s. Provider-Timeouts müssen unter dem Proxy-Timeout bleiben. Ausgabe zusätzlich über `AI_MAX_OUTPUT_TOKENS` (Standard 1024) begrenzt; Eingabe- und Antwortgrößengrenzen bleiben.
 - **Fixture:** Nur mit Spring-Profil `test` oder `AI_ALLOW_FIXTURE=true`. Nicht für den Produktivbetrieb.
 - **Kosten:** Die Limits begrenzen das Anfragevolumen, nicht die Euro-Kosten. Zusätzliche Nutzungs- und Kostenkontrollen des externen Providers bleiben empfohlen. Bei `AI_ENABLED=false` gibt es keine externen Aufrufe.
-- **Verbleibend für den öffentlichen Betrieb:** HTTPS-Betriebsprofil, Secure-Cookies hinter Reverse-Proxy, HTTP-Sicherheitsheader, Request-Größenlimits, Container-Härtung und Backup folgen in 10.4–10.5. AttemptLimiter und AI-Limits sind pro Instanz.
+- **Verbleibend für den öffentlichen Betrieb:** Backup/Restore, CI-Sicherheitsscans und Betriebsfreigabe folgen in 10.5. AttemptLimiter und AI-Limits sind pro Instanz.
+
+### Iteration 10.4 – Produktionsdeployment
+
+- **Compose-Prod:** `compose.prod.yaml` überschreibt die Frontend-Ports mit `!override` auf `127.0.0.1:${APP_PORT:-8182}:8080`. Backend und PostgreSQL ohne Host-Ports. Secure-Cookies und Client-IP-Weiterleitung sind aktiv. Healthchecks, Restart-Policies und Volume `postgres-data` bleiben.
+- **Proxy-Kette:** Host-Nginx setzt Forwarded-Header kontrolliert; Frontend-Nginx (`nginx.prod.conf`) nutzt `real_ip` nur für private Peers und überschreibt `X-Forwarded-For` gegenüber dem Backend. `ClientIpResolver` wertet Header nur bei `APP_FORWARD_CLIENT_IP` und Trusted-CIDRs aus. Lokal bleiben Forwarded-Header unvertrauenswürdig.
+- **Header:** Spring Security liefert für API-Antworten CSP (restriktiv), `X-Content-Type-Options`, `X-Frame-Options`, Referrer- und Permissions-Policy. HSTS setzt nur der HTTPS-terminierende Host-Nginx (ohne `includeSubDomains`/`preload`). Statische Dokumente erhalten passende Header im Frontend-Nginx; keine doppelten HSTS-Header.
+- **Request-Größe:** Host- und Frontend-Nginx `client_max_body_size 1m`; Backend `APP_MAX_REQUEST_SIZE` Standard 256 KiB (über Rezepttext-Maximum).
+- **Härtung:** Backend und Frontend als Non-Root, `read_only` Root-FS mit tmpfs, `cap_drop: ALL`, `no-new-privileges`, konfigurierbare Speicher-/CPU-/PID-Limits. PostgreSQL ohne pauschales `cap_drop ALL` (Init braucht Privilegien), mit `no-new-privileges` und Limits.
+- **Dokumentation:** [`deployment.md`](deployment.md), VHost-Beispiel unter `deploy/nginx/`.

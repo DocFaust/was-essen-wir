@@ -28,6 +28,7 @@ public class AuthService {
     private final SecurityProperties properties;
     private final AuthenticatedSession authenticatedSession;
     private final RememberMeService rememberMe;
+    private final ClientIpResolver clientIpResolver;
 
     public AuthService(
             AuthenticationManager authenticationManager,
@@ -36,7 +37,8 @@ public class AuthService {
             AttemptLimiter limiter,
             SecurityProperties properties,
             AuthenticatedSession authenticatedSession,
-            RememberMeService rememberMe) {
+            RememberMeService rememberMe,
+            ClientIpResolver clientIpResolver) {
         this.authenticationManager = authenticationManager;
         this.users = users;
         this.sessions = sessions;
@@ -44,12 +46,13 @@ public class AuthService {
         this.properties = properties;
         this.authenticatedSession = authenticatedSession;
         this.rememberMe = rememberMe;
+        this.clientIpResolver = clientIpResolver;
     }
 
     public UserResponse login(LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         String username = request == null || request.username() == null ? "" : request.username();
         String password = request == null ? null : request.password();
-        String key = "login:" + Usernames.normalize(username) + "|" + remoteAddress(httpRequest);
+        String key = "login:" + Usernames.normalize(username) + "|" + clientIpResolver.resolve(httpRequest);
         if (!limiter.tryAcquire(key, properties.loginMaxAttempts(), properties.loginWindow())) {
             throw new ApiException(
                     HttpStatus.TOO_MANY_REQUESTS,
@@ -127,13 +130,4 @@ public class AuthService {
         }
     }
 
-    /**
-     * Nutzt ausschließlich die vom Servlet-Container ermittelte Remote-Adresse. Client-gesetzte
-     * {@code Forwarded}- oder {@code X-Forwarded-For}-Kopfzeilen werden nicht ausgewertet; hinter
-     * einem Reverse-Proxy muss die Peer-Adresse dort korrekt gesetzt werden (Iteration 10.4).
-     */
-    private static String remoteAddress(HttpServletRequest request) {
-        String address = request.getRemoteAddr();
-        return address == null || address.isBlank() ? "unknown" : address;
-    }
 }
