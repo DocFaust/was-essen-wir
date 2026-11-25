@@ -49,7 +49,7 @@ app:
       timeout: ${OPENAI_TIMEOUT:30s}
 ```
 
-Der Provider wird nur über `AI_PROVIDER` gewählt: `ollama` oder `openai`. Ein Wechsel braucht keine Codeänderung. `fixture` ist ein Testdouble ohne Netz und nicht für den Alltag gedacht.
+Der Provider wird nur über `AI_PROVIDER` gewählt: `ollama` oder `openai`. Ein Wechsel braucht keine Codeänderung. `fixture` ist ein Testdouble ohne Netz und nicht für den Alltag gedacht. Eine weitere Beschränkung des Fixture-Providers auf den Testbetrieb sowie Rate-Limiting, Parallelitätsgrenzen und Schutz vor unkontrollierten API-Kosten bei externen Providern sind in Iteration 10.3 geplant und noch nicht umgesetzt.
 
 `127.0.0.1` im Backend-Container ist der Container selbst, nicht ein anderer Rechner. `host.docker.internal` ist unter Linux keine verlässliche Adresse für einen anderen Rechner im Heimnetz. Ollama auf einem anderen Gerät erreicht man über seine LAN-Adresse oder einen DNS-Namen:
 

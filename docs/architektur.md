@@ -1,17 +1,20 @@
 # Architektur
 
-**Stand:** 11.10.2026
+**Stand:** 25.11.2026
 
 ## Entscheidungen
 
-- Eine Installation bedient genau eine Familie. Benutzer und Familienmitglieder werden zur Laufzeit verwaltet und nicht im Quellcode hinterlegt.
+- Eine Installation bedient genau eine Familie. Benutzer und Familienmitglieder werden zur Laufzeit verwaltet und nicht im Quellcode hinterlegt. Die Anwendung bleibt eine private Familienanwendung, auch wenn sie über das Internet erreichbar ist. Keine Multi-Tenant-Funktionalität und keine öffentliche Selbstregistrierung.
 - Frontend: React, TypeScript, Vite, Material UI. Mobile first. Die PWA ist das Architekturziel. Manifest und Icons werden vorbereitet; Offline-Synchronisation und Caching-Strategien folgen erst nach gesonderter Entscheidung.
 - Backend: Spring Boot, Java 25, Gradle mit Kotlin DSL, REST.
 - Persistenz: PostgreSQL. Schema-Migrationen mit Flyway.
-- Betrieb: Docker Compose. Zielplattform ist ein Raspberry Pi 5 (`linux/arm64`). Entwicklung auf Windows und Linux. Ausschließlich privates Heimnetz, keine öffentliche Internetfreigabe.
+- Betrieb: Docker Compose. Unterstützte Plattformen: `linux/amd64` und `linux/arm64`. Der Raspberry Pi bleibt eine unterstützte Plattform. Entwicklung auf Windows und Linux.
+- Betriebsmodi:
+  - **Heimnetz (umgesetzt):** privater HTTP-Betrieb im lokalen Netz. `APP_SESSION_COOKIE_SECURE` bleibt dafür `false`.
+  - **Öffentlich (beschlossen, noch nicht freigegeben):** Betrieb hinter einem HTTPS-Reverse-Proxy, geplant auf einem bestehenden Netcup-Rootserver unter `https://essen.faustens.de`. Der interne HTTP-Port darf nicht direkt aus dem Internet erreichbar sein. Backend und PostgreSQL bleiben intern und werden nicht öffentlich exponiert. Secure-Cookies sind in diesem Profil verpflichtend. Die konkrete Reverse-Proxy-Technologie ist noch nicht festgelegt. Der öffentliche Betrieb ist erst nach Abschluss der Sicherheitshärtung in Iteration 10 freigegeben.
 - Konfiguration über Umgebungsvariablen. `.env` bleibt lokal. `.env.example` enthält keine echten Geheimnisse.
-- Authentifizierung: Spring Security mit lokaler Benutzerverwaltung und serverseitigen HTTP-Sessions. Keine Keycloak-, OAuth2-, JWT- oder separate Authentifizierungsinfrastruktur. Keine öffentliche Selbstregistrierung und keine E-Mail-Verifizierung.
-- KI optional über eine austauschbare Provider-Abstraktion. Ollama und die OpenAI-Chat-Completions-API laufen nur serverseitig. Die KI erhält keinen Datenbankzugriff, wählt keine Gerichte selbst und speichert keine Gerichte. Kernfunktionen bleiben ohne LLM nutzbar. Der Ablauf steht in [`ki-assistent.md`](ki-assistent.md).
+- Authentifizierung: Spring Security mit lokaler Benutzerverwaltung, serverseitigen HTTP-Sessions und optionalem Remember-me. Keine Keycloak-, OAuth2-, JWT- oder separate Authentifizierungsinfrastruktur. Keine öffentliche Selbstregistrierung und keine E-Mail-Verifizierung.
+- KI optional über eine austauschbare Provider-Abstraktion. Ollama und die OpenAI-Chat-Completions-API laufen nur serverseitig. Die KI erhält keinen Datenbankzugriff, wählt keine Gerichte selbst und speichert keine Gerichte. Kernfunktionen bleiben ohne LLM nutzbar. Bei externen KI-Providern sind Missbrauch und unkontrollierte API-Kosten durch geeignete Schutzmaßnahmen zu begrenzen (geplant in Iteration 10.3). Der Ablauf steht in [`ki-assistent.md`](ki-assistent.md).
 
 ## Iteration 1
 
@@ -27,7 +30,7 @@ Lokale Benutzer mit den Rollen `ADMIN` und `MEMBER`. Passwörter liegen als BCry
 
 Solange kein Administrator existiert, ist die Einrichtung offen. Das Backend erzeugt dafür ein zufälliges Setup-Token, speichert nur seinen SHA-256-Hash und schreibt das Token einmalig ins Log. Die Ersteinrichtung prüft dieses Token in einer Datenbanktransaktion mit Sperre und kann genau einmal gelingen. Danach ist das Token ungültig, auch nach einem Neustart.
 
-`APP_SESSION_COOKIE_SECURE` steht standardmäßig auf `false`, weil das Heimnetz per HTTP erreichbar ist. Browser verwerfen `Secure`-Cookies auf reinem HTTP. Ein späterer HTTPS-Zugang setzt die Variable auf `true`. Dieselbe Variable gilt für das Remember-me-Cookie.
+`APP_SESSION_COOKIE_SECURE` steht standardmäßig auf `false`, weil das Heimnetz per HTTP erreichbar ist. Browser verwerfen `Secure`-Cookies auf reinem HTTP. Beim öffentlichen HTTPS-Betrieb muss die Variable auf `true` stehen; das verpflichtende Secure-Cookie-Profil dafür ist Teil von Iteration 10.4 und noch nicht als eigenes Betriebsprofil umgesetzt. Dieselbe Variable gilt für das Remember-me-Cookie.
 
 Optional kann sich eine Person auf einem Gerät bis zu 30 Tage angemeldet halten (`APP_REMEMBER_ME_ENABLED`, `APP_REMEMBER_ME_DURATION`). Die Checkbox ist standardmäßig aus; ohne sie bleibt es bei der 12-Stunden-Sitzung. Das Cookie `WAEW_REMEMBER` ist `HttpOnly`, `SameSite=Lax` und trägt Selektor plus Geheimnis. PostgreSQL speichert nur den SHA-256 des Geheimnisses. Jede Wiederanmeldung rotiert das Geheimnis und legt eine normale Sitzung an. Eine überlappende Anfrage darf das gerade ersetzte Geheimnis noch 30 Sekunden verwenden. Danach widerruft eine Wiederverwendung alle dauerhaften Anmeldungen dieser Person. Abmelden gilt nur für das aktuelle Gerät. Passwortänderung, Passwortzurücksetzung und Deaktivierung widerrufen alle Geräte. Höchstens acht Tokens bleiben pro Person erhalten; abgelaufene Zeilen werden beim Anmelden und bei der Wiederanmeldung gelöscht. CSRF bleibt für zustandsändernde Aufrufe Pflicht. Der Klartext steht nicht in `localStorage`, nicht in der API und nicht in der Datenbank.
 
@@ -38,6 +41,8 @@ Persönliche Sternebewertungen liegen in einer gemeinsamen Tabelle für Grundger
 ## Laufzeitgrenzen
 
 Im Standard-Compose ist PostgreSQL nicht auf dem Host veröffentlicht. Das Frontend ist der einzige veröffentlichte Dienst und leitet `/api` an das Backend weiter. Actuator bleibt im internen Backend-Netz und liefert keine Konfigurationsdetails. `GET /api/status` und `GET /actuator/health` bleiben ohne Anmeldung erreichbar, damit die bestehende Gesundheitsprüfung funktioniert. Sie enthalten keine Benutzer- oder Token-Daten. Alle Gerichte- und Benutzerendpunkte verlangen eine gültige Sitzung.
+
+Für den öffentlichen Betrieb gilt zusätzlich (beschlossen, Umsetzung in Iteration 10): Der Compose-HTTP-Port darf nicht direkt aus dem Internet erreichbar sein; der Zugang erfolgt ausschließlich über HTTPS am Reverse-Proxy. Backend und PostgreSQL bleiben weiterhin nur intern erreichbar.
 
 ## Iteration 5
 
@@ -58,3 +63,7 @@ Die Oberfläche priorisiert die täglichen Aufgaben, ohne neue Fachendpunkte. Di
 ## Iteration 9
 
 `POST /api/ai/dish-drafts` übersetzt eine Beschreibung in einen versionierten Entwurf für ein Grundgericht oder eine Variante. Der Endpunkt liest nur und schreibt nicht. Ollama erhält dasselbe JSON-Schema als `format`, OpenAI als Structured Output `dish_draft`. Das Backend verwirft Angaben, die der Text nicht stützt, und ergänzt ausdrückliche Angaben, die das Modell auslässt. `null` bleibt unbekannt beziehungsweise bei einer Variante geerbt. Ein ähnlicher Name wird lokal angezeigt und sperrt das Speichern nicht. Die vorhandenen CRUD-Endpunkte legen das Gericht erst nach der Bestätigung im Formular an.
+
+## Iteration 10
+
+Public Deployment Hardening. Die Architekturentscheidungen für Heimnetz und öffentlichen HTTPS-Betrieb stehen oben. Umsetzung der Sicherheitshärtung, des öffentlichen Betriebsprofils, der KI-Absicherung und der Betriebssicherheit folgt in den Arbeitspaketen 10.2 bis 10.5 laut [`roadmap.md`](roadmap.md). Bis zum Abschluss bleibt der produktive öffentliche Betrieb gesperrt.
