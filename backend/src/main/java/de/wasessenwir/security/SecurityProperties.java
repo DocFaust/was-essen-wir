@@ -8,4 +8,5 @@ public record SecurityProperties(
         int loginMaxAttempts,
         Duration loginWindow,
         int setupMaxAttempts,
-        Duration setupWindow) {}
+        Duration setupWindow,
+        int attemptLimiterMaxKeys) {}

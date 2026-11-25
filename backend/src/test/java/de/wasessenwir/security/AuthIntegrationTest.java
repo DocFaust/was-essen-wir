@@ -216,19 +216,43 @@ class AuthIntegrationTest {
     }
 
     @Test
-    void loginRenewsTheSessionAndLogoutInvalidatesIt() {
+    void anonymousStatusRequestsDoNotCreateSessions() {
+        for (int attempt = 0; attempt < 12; attempt++) {
+            ResponseEntity<String> setupStatus = raw.getForEntity("/api/setup/status", String.class);
+            assertThat(setupStatus.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(ApiSessions.setCookie(setupStatus.getHeaders().get(HttpHeaders.SET_COOKIE), "WAEW_SESSION"))
+                    .isNull();
+            assertThat(ApiSessions.setCookie(setupStatus.getHeaders().get(HttpHeaders.SET_COOKIE), "XSRF-TOKEN"))
+                    .isNotBlank();
+
+            ResponseEntity<String> apiStatus = raw.getForEntity("/api/status", String.class);
+            assertThat(apiStatus.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(ApiSessions.setCookie(apiStatus.getHeaders().get(HttpHeaders.SET_COOKIE), "WAEW_SESSION"))
+                    .isNull();
+        }
+
+        TestRestTemplate api = session();
+        assertThat(api.postForEntity("/api/setup", setup(tokens.token()), String.class).getStatusCode())
+                .isEqualTo(HttpStatus.CREATED);
+        ResponseEntity<String> login = api.postForEntity(
+                "/api/auth/login", new LoginRequest(ADMIN, ADMIN_PASSWORD), String.class);
+        assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(api.getForEntity("/api/auth/me", UserResponse.class).getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void loginCreatesASessionAndLogoutInvalidatesIt() {
         TestRestTemplate api = session();
         assertThat(api.postForEntity("/api/setup", setup(tokens.token()), String.class).getStatusCode())
                 .isEqualTo(HttpStatus.CREATED);
         ResponseEntity<String> primed = raw.getForEntity("/api/setup/status", String.class);
         String csrf = ApiSessions.setCookie(primed.getHeaders().get(HttpHeaders.SET_COOKIE), "XSRF-TOKEN");
-        String before = ApiSessions.setCookie(primed.getHeaders().get(HttpHeaders.SET_COOKIE), "WAEW_SESSION");
         assertThat(csrf).isNotBlank();
-        assertThat(before).isNotBlank();
+        assertThat(ApiSessions.setCookie(primed.getHeaders().get(HttpHeaders.SET_COOKIE), "WAEW_SESSION")).isNull();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add(HttpHeaders.COOKIE, "WAEW_SESSION=" + before + "; XSRF-TOKEN=" + csrf);
+        headers.add(HttpHeaders.COOKIE, "XSRF-TOKEN=" + csrf);
         headers.add("X-XSRF-TOKEN", csrf);
         ResponseEntity<UserResponse> login = raw.exchange(
                 "/api/auth/login",
@@ -237,17 +261,13 @@ class AuthIntegrationTest {
                 UserResponse.class);
         assertThat(login.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(login.getBody().displayName()).isEqualTo("Ada Lovelace");
-        String after = ApiSessions.setCookie(login.getHeaders().get(HttpHeaders.SET_COOKIE), "WAEW_SESSION");
-        assertThat(after).isNotBlank().isNotEqualTo(before);
-
-        HttpHeaders oldSession = new HttpHeaders();
-        oldSession.add(HttpHeaders.COOKIE, "WAEW_SESSION=" + before);
-        assertThat(raw.exchange("/api/auth/me", HttpMethod.GET, new HttpEntity<>(oldSession), String.class).getStatusCode())
-                .isEqualTo(HttpStatus.UNAUTHORIZED);
+        String sessionId = ApiSessions.setCookie(login.getHeaders().get(HttpHeaders.SET_COOKIE), "WAEW_SESSION");
+        assertThat(sessionId).isNotBlank();
 
         HttpHeaders newSession = new HttpHeaders();
-        newSession.add(HttpHeaders.COOKIE, "WAEW_SESSION=" + after);
-        assertThat(raw.exchange("/api/auth/me", HttpMethod.GET, new HttpEntity<>(newSession), UserResponse.class).getStatusCode())
+        newSession.add(HttpHeaders.COOKIE, "WAEW_SESSION=" + sessionId);
+        assertThat(raw.exchange("/api/auth/me", HttpMethod.GET, new HttpEntity<>(newSession), UserResponse.class)
+                        .getStatusCode())
                 .isEqualTo(HttpStatus.OK);
 
         ResponseEntity<String> failed = api.postForEntity(
@@ -255,13 +275,52 @@ class AuthIntegrationTest {
         assertThat(failed.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(failed.getBody()).contains("Benutzername oder Passwort ist falsch.");
 
+        ResponseEntity<String> unknown = api.postForEntity(
+                "/api/auth/login", new LoginRequest("Unbekannt", ADMIN_PASSWORD), String.class);
+        assertThat(unknown.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(unknown.getBody()).contains("Benutzername oder Passwort ist falsch.").contains("LOGIN_FAILED");
+
         HttpHeaders logoutHeaders = new HttpHeaders();
-        logoutHeaders.add(HttpHeaders.COOKIE, "WAEW_SESSION=" + after + "; XSRF-TOKEN=" + csrfFrom(login));
+        logoutHeaders.add(HttpHeaders.COOKIE, "WAEW_SESSION=" + sessionId + "; XSRF-TOKEN=" + csrfFrom(login));
         logoutHeaders.add("X-XSRF-TOKEN", csrfFrom(login));
         ResponseEntity<Void> logout = raw.exchange(
                 "/api/auth/logout", HttpMethod.POST, new HttpEntity<>(logoutHeaders), Void.class);
         assertThat(logout.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-        assertThat(raw.exchange("/api/auth/me", HttpMethod.GET, new HttpEntity<>(newSession), String.class).getStatusCode())
+        assertThat(raw.exchange("/api/auth/me", HttpMethod.GET, new HttpEntity<>(newSession), String.class)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void loginRotatesAnExistingSessionId() {
+        TestRestTemplate api = session();
+        assertThat(api.postForEntity("/api/setup", setup(tokens.token()), String.class).getStatusCode())
+                .isEqualTo(HttpStatus.CREATED);
+        ResponseEntity<String> firstLogin = api.postForEntity(
+                "/api/auth/login", new LoginRequest(ADMIN, ADMIN_PASSWORD), String.class);
+        assertThat(firstLogin.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String before = ApiSessions.setCookie(firstLogin.getHeaders().get(HttpHeaders.SET_COOKIE), "WAEW_SESSION");
+        assertThat(before).isNotBlank();
+
+        ResponseEntity<String> primed = raw.getForEntity("/api/setup/status", String.class);
+        String csrf = ApiSessions.setCookie(primed.getHeaders().get(HttpHeaders.SET_COOKIE), "XSRF-TOKEN");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add(HttpHeaders.COOKIE, "WAEW_SESSION=" + before + "; XSRF-TOKEN=" + csrf);
+        headers.add("X-XSRF-TOKEN", csrf);
+        ResponseEntity<UserResponse> secondLogin = raw.exchange(
+                "/api/auth/login",
+                HttpMethod.POST,
+                new HttpEntity<>(new LoginRequest(ADMIN, ADMIN_PASSWORD), headers),
+                UserResponse.class);
+        assertThat(secondLogin.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String after = ApiSessions.setCookie(secondLogin.getHeaders().get(HttpHeaders.SET_COOKIE), "WAEW_SESSION");
+        assertThat(after).isNotBlank().isNotEqualTo(before);
+
+        HttpHeaders oldSession = new HttpHeaders();
+        oldSession.add(HttpHeaders.COOKIE, "WAEW_SESSION=" + before);
+        assertThat(raw.exchange("/api/auth/me", HttpMethod.GET, new HttpEntity<>(oldSession), String.class)
+                        .getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 

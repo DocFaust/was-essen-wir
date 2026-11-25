@@ -127,6 +127,11 @@ public class AuthService {
         }
     }
 
+    /**
+     * Nutzt ausschließlich die vom Servlet-Container ermittelte Remote-Adresse. Client-gesetzte
+     * {@code Forwarded}- oder {@code X-Forwarded-For}-Kopfzeilen werden nicht ausgewertet; hinter
+     * einem Reverse-Proxy muss die Peer-Adresse dort korrekt gesetzt werden (Iteration 10.4).
+     */
     private static String remoteAddress(HttpServletRequest request) {
         String address = request.getRemoteAddr();
         return address == null || address.isBlank() ? "unknown" : address;

@@ -305,13 +305,12 @@ class RatingIntegrationTest {
         DishDetailResponse dish = createDish("Sitzung");
         ResponseEntity<String> primed = rawTemplate.getForEntity("/api/setup/status", String.class);
         String csrf = ApiSessions.setCookie(primed.getHeaders().get(HttpHeaders.SET_COOKIE), "XSRF-TOKEN");
-        String before = ApiSessions.setCookie(primed.getHeaders().get(HttpHeaders.SET_COOKIE), "WAEW_SESSION");
         assertThat(csrf).isNotBlank();
-        assertThat(before).isNotBlank();
+        assertThat(ApiSessions.setCookie(primed.getHeaders().get(HttpHeaders.SET_COOKIE), "WAEW_SESSION")).isNull();
 
         HttpHeaders loginHeaders = new HttpHeaders();
         loginHeaders.setContentType(MediaType.APPLICATION_JSON);
-        loginHeaders.add(HttpHeaders.COOKIE, "WAEW_SESSION=" + before + "; XSRF-TOKEN=" + csrf);
+        loginHeaders.add(HttpHeaders.COOKIE, "XSRF-TOKEN=" + csrf);
         loginHeaders.add("X-XSRF-TOKEN", java.net.URLDecoder.decode(csrf, java.nio.charset.StandardCharsets.UTF_8));
         ResponseEntity<String> login = rawTemplate.exchange(
                 "/api/auth/login",

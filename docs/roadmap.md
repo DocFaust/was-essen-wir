@@ -18,11 +18,11 @@ Jede Iteration ist für sich testbar. Fachliche Anforderungen stehen in [`fachko
     - Betriebsmodell und Architekturentscheidungen aktualisieren.
     - Projektdokumentation konsistent halten.
 
-    10.2 – Anwendungssicherheit
-    - Unnötige anonyme Session-Erzeugung verhindern.
-    - Bestehenden AttemptLimiter hinsichtlich Speicherverbrauch und Missbrauch absichern.
-    - Login-Timing hinsichtlich Benutzer-Enumeration prüfen und gegebenenfalls absichern.
-    - Sicherheitsrelevante Regressionstests ergänzen.
+    10.2 – Anwendungssicherheit – abgeschlossen.
+    - Unnötige anonyme Session-Erzeugung an öffentlichen Statusendpunkten entfernt.
+    - AttemptLimiter mit Kapazitätsgrenze, Bereinigung abgelaufener Einträge und Schutz bestehender Sperren abgesichert.
+    - Login-Timing geprüft: Spring Security 7.1.2 (`DaoAuthenticationProvider`) deckt unbekannte und deaktivierte Benutzer ab; keine zusätzliche App-Logik nötig.
+    - Sicherheitsrelevante Regressionstests ergänzt.
 
     10.3 – KI-Absicherung
     - Serverseitiges Rate-Limiting.

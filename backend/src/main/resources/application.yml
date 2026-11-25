@@ -38,6 +38,7 @@ app:
     login-window: ${APP_LOGIN_WINDOW:PT15M}
     setup-max-attempts: ${APP_SETUP_MAX_ATTEMPTS:8}
     setup-window: ${APP_SETUP_WINDOW:PT15M}
+    attempt-limiter-max-keys: ${APP_ATTEMPT_LIMITER_MAX_KEYS:10000}
   remember-me:
     enabled: ${APP_REMEMBER_ME_ENABLED:true}
     duration: ${APP_REMEMBER_ME_DURATION:P30D}

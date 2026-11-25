@@ -21,8 +21,7 @@ public class SetupController {
     }
 
     @GetMapping("/status")
-    SetupStatusResponse status(HttpServletRequest request) {
-        request.getSession(true);
+    SetupStatusResponse status() {
         return new SetupStatusResponse(setup.isRequired());
     }
 
