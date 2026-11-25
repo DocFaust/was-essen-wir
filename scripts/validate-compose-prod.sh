@@ -26,6 +26,9 @@ echo "$CONFIG" | grep -Eq 'APP_REQUIRE_SECURE_COOKIES: ("true"|true)' \
 echo "$CONFIG" | grep -Eq 'APP_FORWARD_CLIENT_IP: ("true"|true)' \
   || fail "APP_FORWARD_CLIENT_IP muss true sein"
 
+echo "$CONFIG" | grep -Eq 'APP_TRUSTED_PROXIES:[[:space:]]*172\.30\.90\.0/24' \
+  || fail "APP_TRUSTED_PROXIES muss auf das Compose-Netz 172.30.90.0/24 zeigen"
+
 # Canonical Compose-Config: host_ip / published / target unter dem Frontend-Service.
 python3 - "$CONFIG" "$APP_PORT" <<'PY'
 import sys
@@ -34,6 +37,13 @@ import yaml
 config = yaml.safe_load(sys.argv[1])
 app_port = str(sys.argv[2])
 services = config.get("services") or {}
+
+networks = config.get("networks") or {}
+default_net = networks.get("default") or {}
+ipam = ((default_net.get("ipam") or {}).get("config")) or []
+subnets = [entry.get("subnet") for entry in ipam if isinstance(entry, dict)]
+if "172.30.90.0/24" not in subnets:
+    raise SystemExit(f"Prod-Netz muss Subnetz 172.30.90.0/24 nutzen, gefunden: {subnets}")
 
 for name in ("postgres", "backend"):
     ports = (services.get(name) or {}).get("ports")

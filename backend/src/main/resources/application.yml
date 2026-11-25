@@ -34,7 +34,7 @@ server:
 
 app:
   time-zone: ${APP_TIME_ZONE:Europe/Berlin}
-  # Abgestimmt mit Nginx client_max_body_size (1m) und Rezepttext-Maximum (20000 Zeichen).
+  # Abgestimmt mit Nginx client_max_body_size (256k) und Rezepttext-Maximum (20000 Zeichen).
   max-request-size: ${APP_MAX_REQUEST_SIZE:256KB}
   setup:
     token-ttl: ${APP_SETUP_TOKEN_TTL:PT24H}

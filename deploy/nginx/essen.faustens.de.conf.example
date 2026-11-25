@@ -48,7 +48,7 @@ server {
     # HSTS nur auf HTTPS. Kein includeSubDomains / preload ohne ausdrückliche Freigabe.
     add_header Strict-Transport-Security "max-age=31536000" always;
 
-    client_max_body_size 1m;
+    client_max_body_size 256k;
 
     # Kontrolliertes Setzen der Proxy-Header (Überschreiben, nicht Anhängen).
     proxy_set_header Host              $host;

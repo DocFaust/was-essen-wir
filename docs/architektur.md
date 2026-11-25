@@ -86,8 +86,8 @@ Public Deployment Hardening. Die Architekturentscheidungen für Heimnetz und öf
 ### Iteration 10.4 – Produktionsdeployment
 
 - **Compose-Prod:** `compose.prod.yaml` überschreibt die Frontend-Ports mit `!override` auf `127.0.0.1:${APP_PORT:-8182}:8080`. Backend und PostgreSQL ohne Host-Ports. Secure-Cookies und Client-IP-Weiterleitung sind aktiv. Healthchecks, Restart-Policies und Volume `postgres-data` bleiben.
-- **Proxy-Kette:** Host-Nginx setzt Forwarded-Header kontrolliert; Frontend-Nginx (`nginx.prod.conf`) nutzt `real_ip` nur für private Peers und überschreibt `X-Forwarded-For` gegenüber dem Backend. `ClientIpResolver` wertet Header nur bei `APP_FORWARD_CLIENT_IP` und Trusted-CIDRs aus. Lokal bleiben Forwarded-Header unvertrauenswürdig.
+- **Proxy-Kette:** Host-Nginx setzt Forwarded-Header kontrolliert; Frontend-Nginx (`nginx.prod.conf`) nutzt `real_ip` nur für Loopback und das Compose-Netz `172.30.90.0/24` und überschreibt `X-Forwarded-For` gegenüber dem Backend. `ClientIpResolver` wertet Header nur bei `APP_FORWARD_CLIENT_IP` und Trusted-CIDRs (`APP_TRUSTED_PROXIES`, Standard `172.30.90.0/24`) aus. Lokal bleiben Forwarded-Header unvertrauenswürdig.
 - **Header:** Spring Security liefert für API-Antworten CSP (restriktiv), `X-Content-Type-Options`, `X-Frame-Options`, Referrer- und Permissions-Policy. HSTS setzt nur der HTTPS-terminierende Host-Nginx (ohne `includeSubDomains`/`preload`). Statische Dokumente erhalten passende Header im Frontend-Nginx; keine doppelten HSTS-Header.
-- **Request-Größe:** Host- und Frontend-Nginx `client_max_body_size 1m`; Backend `APP_MAX_REQUEST_SIZE` Standard 256 KiB (über Rezepttext-Maximum).
+- **Request-Größe:** Host-Nginx, Frontend-Nginx und Backend begrenzen auf 256 KiB (inkl. Chunked-Bodies im Backend).
 - **Härtung:** Backend und Frontend als Non-Root, `read_only` Root-FS mit tmpfs, `cap_drop: ALL`, `no-new-privileges`, konfigurierbare Speicher-/CPU-/PID-Limits. PostgreSQL ohne pauschales `cap_drop ALL` (Init braucht Privilegien), mit `no-new-privileges` und Limits.
 - **Dokumentation:** [`deployment.md`](deployment.md), VHost-Beispiel unter `deploy/nginx/`.

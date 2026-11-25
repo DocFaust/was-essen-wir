@@ -21,11 +21,11 @@ Kette: Browser → Host-Nginx → Frontend-Nginx → Spring Boot.
 | Stufe | Vertrauensstellung |
 | --- | --- |
 | Host-Nginx | Einzige öffentliche Eingangsstufe. Überschreibt `X-Forwarded-For`, `X-Real-IP` und `X-Forwarded-Proto` mit Werten aus der TCP-Verbindung (`$remote_addr`, `$scheme`). Client-gesetzte Forwarded-Header werden nicht übernommen. |
-| Frontend-Nginx (Prod) | Vertraut privaten Peer-Netzen / Loopback (`set_real_ip_from`) für `X-Forwarded-For` vom Host-Nginx. Setzt gegenüber dem Backend erneut `X-Forwarded-For` / `X-Real-IP` auf den so ermittelten Client und reicht `X-Forwarded-Proto` durch. |
-| Backend | Wertet Forwarded-Header nur aus, wenn `APP_FORWARD_CLIENT_IP=true` und die Peer-Adresse in `APP_TRUSTED_PROXIES` liegt (Docker-Netze). Sonst ausschließlich `request.getRemoteAddr()`. |
+| Frontend-Nginx (Prod) | Vertraut nur Loopback und das Compose-Netz `172.30.90.0/24` (`set_real_ip_from`). Setzt gegenüber dem Backend erneut `X-Forwarded-For` / `X-Real-IP` und reicht `X-Forwarded-Proto` durch. |
+| Backend | Wertet Forwarded-Header nur aus, wenn `APP_FORWARD_CLIENT_IP=true` und die Peer-Adresse in `APP_TRUSTED_PROXIES` liegt (Standard `172.30.90.0/24`). Sonst ausschließlich `request.getRemoteAddr()`. |
 | Lokaler HTTP | `APP_FORWARD_CLIENT_IP=false` (Standard). Frontend überschreibt Forwarded-Header mit der TCP-Peer-Adresse. Spoofing über `X-Forwarded-For` greift nicht. |
 
-Der produktive Frontend-Port ist ausschließlich an `127.0.0.1` gebunden. Direkte Loopback-Zugriffe unter Umgehung des Host-Nginx bleiben ein lokales Restrisiko und sind kein Internetzugang.
+Das produktive Compose-Netz ist fest auf `172.30.90.0/24` gesetzt; es werden keine pauschalen RFC1918-Bereiche vertraut. Der Frontend-Port ist ausschließlich an `127.0.0.1` gebunden. Direkte Loopback-Zugriffe unter Umgehung des Host-Nginx bleiben ein lokales Restrisiko.
 
 ## DNS
 
@@ -84,7 +84,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Timeouts für `/api/ai/` sind im Beispiel auf 45s gesetzt (abgestimmt mit internem Nginx und Provider-Timeout 30s). `client_max_body_size 1m` liegt über dem Backend-Limit 256 KiB.
+Timeouts für `/api/ai/` sind im Beispiel auf 45s gesetzt (abgestimmt mit internem Nginx und Provider-Timeout 30s). `client_max_body_size` ist überall 256k, abgestimmt mit dem Backend-Limit.
 
 HSTS wird nur auf HTTPS gesetzt, ohne `includeSubDomains` und ohne `preload`.
 
@@ -122,7 +122,7 @@ Volumes nicht mit `--volumes` löschen. Offene Sitzungen enden bei Backend-Neust
 | Backend startet nicht | `APP_REQUIRE_SECURE_COOKIES` vs. `APP_SESSION_COOKIE_SECURE`; Logs `docker compose ... logs backend` |
 | 502 vom Host-Nginx | Lauscht Frontend auf `127.0.0.1:APP_PORT`? `docker compose ... ps` |
 | Cookies fehlen | Secure-Cookies brauchen HTTPS; Host-Nginx setzt `X-Forwarded-Proto https` |
-| 413 | Request größer als Nginx 1m oder Backend 256 KiB |
+| 413 | Request größer als 256 KiB (Nginx und Backend) |
 | KI-Timeouts | Provider-Timeout &lt; 45s Proxy-Timeout; siehe Iteration 10.3 |
 
 ## Abgrenzung

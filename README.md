@@ -30,7 +30,7 @@ In `.env` ein eigenes `POSTGRES_PASSWORD` setzen. Die Datei bleibt lokal und ist
 | `APP_SESSION_COOKIE_SECURE` | Secure-Flag für Sitzungs-, Remember-me- und CSRF-Cookies; Prod erzwingt `true` |
 | `APP_REQUIRE_SECURE_COOKIES` | Start abbrechen, wenn Secure-Cookies fehlen; Prod `true` |
 | `APP_FORWARD_CLIENT_IP` | Client-IP aus vertrauenswürdigen Proxy-Headern; Prod `true` |
-| `APP_TRUSTED_PROXIES` | Kommagetrennte CIDRs für Forwarded-Header (nur mit Forwarding) |
+| `APP_TRUSTED_PROXIES` | CIDRs für Forwarded-Header (Prod-Standard `172.30.90.0/24`) |
 | `APP_MAX_REQUEST_SIZE` | Maximale Request-Größe im Backend, Standard `256KB` |
 | `POSTGRES_PORT` | Host-Port nur im Entwicklungs-Override, Standard `5432` |
 | `TZ` | Zeitzone der Container, Standard `Europe/Berlin` |
@@ -201,7 +201,7 @@ npm run test:e2e
 - Backend: `./gradlew check` (Unit- und Integrationstests mit Testcontainers, JaCoCo-Report und Coverage-Grenze). Der HTML-Report wird als Artifact hochgeladen, auch wenn die Grenze fehlschlägt.
 - Frontend: `npm ci`, TypeScript, Lint, Vitest mit Coverage-Grenze, Production-Build. Der Coverage-Report wird ebenfalls als Artifact hochgeladen.
 - E2E: Compose-Stack, Playwright, Screenshots und Traces bei Fehlern
-- Compose-Konfiguration (inkl. produktives Override und Loopback-Bindung)
+- Compose-Konfiguration und Laufzeittest (Prod-Override inkl. Healthchecks/API/Loopback-Port sowie lokale HTTP-Compose)
 - Nativer Lauf auf `ubuntu-24.04-arm`: Image-Build und Abruf von `/api/status`
 
 Die Pipeline braucht weder das Heimnetz noch eine produktive Datenbank oder die OpenAI-API.

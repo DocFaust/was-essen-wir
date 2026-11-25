@@ -3,7 +3,17 @@
 #
 # Merge-Hinweis: ports werden mit !override ersetzt, damit die öffentliche Bindung
 # aus compose.yaml nicht zusätzlich übernommen wird.
+#
+# Das Compose-Netz nutzt fest 172.30.90.0/24. Nur dieses Netz (plus Loopback am
+# Frontend) gilt als vertrauenswürdige Proxy-Quelle – keine pauschalen RFC1918-Bereiche.
 name: was-essen-wir
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.90.0/24
 
 services:
   postgres:
@@ -21,8 +31,8 @@ services:
       APP_SESSION_COOKIE_SECURE: "true"
       APP_REQUIRE_SECURE_COOKIES: "true"
       APP_FORWARD_CLIENT_IP: "true"
-      # Peer des Backends ist das Frontend-Container-Netz (Docker-Bridge/Custom).
-      APP_TRUSTED_PROXIES: ${APP_TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      # Peer des Backends ist nur das Frontend im Compose-Netz 172.30.90.0/24.
+      APP_TRUSTED_PROXIES: ${APP_TRUSTED_PROXIES:-172.30.90.0/24}
       AI_ALLOW_FIXTURE: "false"
       APP_MAX_REQUEST_SIZE: ${APP_MAX_REQUEST_SIZE:-256KB}
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport}

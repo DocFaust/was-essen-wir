@@ -36,7 +36,7 @@ Jede Iteration ist für sich testbar. Fachliche Anforderungen stehen in [`fachko
     - Host-Nginx-VHost-Beispiel für `essen.faustens.de` mit TLS und kontrollierten Proxy-Headern.
     - Vertrauenswürdige Client-IP für AttemptLimiter; Schutz gegen Header-Spoofing.
     - HTTP-Sicherheitsheader (CSP, Frame-Schutz, Referrer-/Permissions-Policy); HSTS am Host-Nginx.
-    - Request-Größenbegrenzung (Nginx 1m, Backend 256 KiB).
+    - Request-Größenbegrenzung einheitlich 256 KiB (Nginx und Backend, inkl. Chunked).
     - Deployment-Anleitung in `docs/deployment.md`; automatisierte Compose- und Sicherheitstests.
 
     10.5 – Betriebssicherheit
