@@ -1,6 +1,6 @@
 # Fachkonzept – Was essen wir?
 
-**Version:** 1.9 · **Stand:** 11.10.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
+**Version:** 1.10 · **Stand:** 25.11.2026 · **Status:** Konsolidierte fachliche Basis für die Umsetzung
 
 Technische Festlegungen zu Authentifizierung, Betrieb und Stack stehen in [`architektur.md`](architektur.md). Der Umsetzungsstand steht in [`roadmap.md`](roadmap.md). Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Planung, Essenshistorie und ein optionaler Essensassistent sind umgesetzt. Der Assistent übersetzt natürlichsprachliche Wünsche; die Auswahl bleibt regelbasiert. Zusätzlich kann eine Beschreibung als Entwurf für ein Gericht oder eine Variante vorbereitet werden. Gespeichert wird der Entwurf nur nach ausdrücklicher Bestätigung über die Gerichteverwaltung. Die Gewichte der Vorschläge stehen in [`empfehlungslogik.md`](empfehlungslogik.md), der Assistent in [`ki-assistent.md`](ki-assistent.md).
 
@@ -160,11 +160,11 @@ Anforderungen an die technische Modellierung: Variantenvererbung mit klarer Übe
 - Die Kernaktion „Essen vorschlagen“ sowie Bewertungen, Anwesenheit und Kontextfilter müssen einhändig und mit wenigen Interaktionen bedienbar sein.
 - Gute Nutzbarkeit bei typischen Smartphone-Breiten (ca. 320–430 CSS-Pixel), Hochformat; Tests auf Android-Mobilbrowsern und Desktop.
 - Kein Offline-Zwang für die erste Version; Offline-Fähigkeit ist gesondert zu entscheiden.
-- Betrieb auf einem Raspberry Pi 5 (`linux/arm64`) per Docker Compose, im privaten Heimnetz. Keine öffentliche Internetfreigabe.
+- Betrieb per Docker Compose auf `linux/amd64` und `linux/arm64` (einschließlich Raspberry Pi). Der private HTTP-Betrieb im Heimnetz bleibt unterstützt. Ein öffentlicher Betrieb hinter HTTPS (Reverse-Proxy) ist beschlossen und erst nach der Sicherheitshärtung in Iteration 10 freigegeben. Die Anwendung bleibt eine private Familienanwendung ohne Multi-Tenancy und ohne öffentliche Selbstregistrierung.
 - Backend Spring Boot / Java 25, Frontend React / MUI, PostgreSQL, Schema-Migrationen mit Flyway.
-- Zugriff nach Anmeldung ausschließlich im privaten Heimnetz.
-- Konfigurierbare API-Ausgabenlimits/Budgetüberwachung; keine API-Schlüssel im Frontend.
-- Regelmäßige Datenbanksicherung, dokumentierte Wiederherstellung.
+- Zugriff nur nach Anmeldung. Im Heimnetz über HTTP; im öffentlichen Betrieb ausschließlich über HTTPS hinter einem Reverse-Proxy. Backend und PostgreSQL werden nicht öffentlich exponiert.
+- Konfigurierbare API-Ausgabenlimits/Budgetüberwachung; keine API-Schlüssel im Frontend. Bei externen KI-Providern sind Missbrauch und unkontrollierte API-Kosten zu begrenzen (Absicherung geplant in Iteration 10.3).
+- Regelmäßige Datenbanksicherung und dokumentierte Wiederherstellung (Betriebssicherheit geplant in Iteration 10.5).
 - Nachvollziehbare Empfehlungsergebnisse, Tests für Berechtigungen, Varianten und Ausschlussregeln.
 
 ## 13. Umsetzungsetappen

@@ -11,6 +11,42 @@ Jede Iteration ist für sich testbar. Fachliche Anforderungen stehen in [`fachko
 7. **KI-Assistent – abgeschlossen.** Optionale Provider Ollama und OpenAI. Natürlichsprachliche Wünsche werden in strukturierte Kriterien übersetzt; die vorhandene Empfehlung wählt die Gerichte. Details in [`ki-assistent.md`](ki-assistent.md). Die KI speichert nicht selbst. Kernfunktionen bleiben ohne LLM nutzbar.
 8. **Alltagstauglichkeit und Mobile UX – abgeschlossen.** Die Startseite beantwortet „Was essen wir heute?“. Vorschläge, Einplanen und das Erfassen von Gegessenem brauchen weniger Bedienhandlungen. Die Navigation priorisiert die täglichen Aufgaben. Bewertung und Begründung stehen in [`ux-review.md`](ux-review.md). Keine neue Fachfunktion.
 9. **KI-gestützte Gerichteerfassung – abgeschlossen.** Natürlichsprachliche Beschreibungen werden zu einem prüfbaren Entwurf für ein Grundgericht oder eine Variante. Gespeichert wird erst, wenn die Person das vorhandene Formular bestätigt. Unbelegte Eigenschaften bleiben leer. Mögliche Duplikate sind ein Hinweis. Details in [`ki-assistent.md`](ki-assistent.md).
-10. **Familienabstimmung und Lernen.** Optionale Abstimmungen und schwache lernende Signale.
+10. **Public Deployment Hardening.** Sicherheitshärtung für den optionalen öffentlichen Betrieb hinter HTTPS. Der Heimnetzbetrieb bleibt unterstützt. Der öffentliche Betrieb ist erst nach Abschluss dieser Iteration freigegeben. Keine fachlichen Funktionen.
+
+    10.1 – Architektur und Arbeitsanweisungen
+    - Allgemeine Agentenregeln ergänzen.
+    - Betriebsmodell und Architekturentscheidungen aktualisieren.
+    - Projektdokumentation konsistent halten.
+
+    10.2 – Anwendungssicherheit
+    - Unnötige anonyme Session-Erzeugung verhindern.
+    - Bestehenden AttemptLimiter hinsichtlich Speicherverbrauch und Missbrauch absichern.
+    - Login-Timing hinsichtlich Benutzer-Enumeration prüfen und gegebenenfalls absichern.
+    - Sicherheitsrelevante Regressionstests ergänzen.
+
+    10.3 – KI-Absicherung
+    - Serverseitiges Rate-Limiting.
+    - Begrenzung paralleler KI-Anfragen.
+    - Schutz vor unkontrollierten API-Kosten.
+    - Abstimmung der Provider- und Proxy-Timeouts.
+    - Test-Fixture-Provider auf den vorgesehenen Testbetrieb beschränken.
+
+    10.4 – Produktionsdeployment
+    - Sicheres Betriebsprofil hinter einem HTTPS-Reverse-Proxy.
+    - Verhinderung direkter öffentlicher HTTP-Zugriffe.
+    - Verpflichtende Secure-Cookies im öffentlichen Betriebsprofil.
+    - Tatsächlich vorhandene HTTP-Sicherheitsheader prüfen und fehlende ergänzen.
+    - Request-Größenbegrenzung.
+    - Angemessene Ressourcenbegrenzung und Container-Härtung.
+    - Deploymentbezogene Sicherheitstests.
+
+    10.5 – Betriebssicherheit
+    - Datenbanksicherung und Wiederherstellung.
+    - Überprüfbarer Backup-/Restore-Prozess.
+    - Angemessene Sicherheitsprüfungen in der CI-Pipeline.
+    - Betriebs- und Deployment-Dokumentation.
+    - Abschließende Prüfung der Deployment-Reife.
+
+11. **Familienabstimmung und Lernen.** Optionale Abstimmungen und schwache lernende Signale.
 
 Allergien, Abstimmungsfristen und Aufbewahrung bleiben offene Punkte im Fachkonzept, bis die jeweilige Iteration sie festlegt. Die Gewichte der regelbasierten Vorschläge stehen in [`empfehlungslogik.md`](empfehlungslogik.md).

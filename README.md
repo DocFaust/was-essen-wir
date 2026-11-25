@@ -1,15 +1,17 @@
 # Was essen wir?
 
-Selbst gehosteter Familien-Essensplaner für genau eine Familie pro Installation. Die Anwendung läuft im privaten Heimnetz, mobile-first, und kommt ohne öffentliche Registrierung aus.
+Selbst gehosteter Familien-Essensplaner für genau eine Familie pro Installation. Mobile-first, ohne öffentliche Registrierung und ohne Multi-Tenancy. Die Anwendung bleibt eine private Familienanwendung, auch wenn sie später über das Internet erreichbar ist.
 
-**Stand Iteration 9:** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Wochenplan und Essenshistorie. Die Startseite beantwortet „Was essen wir heute?“ und hält Vorschläge, Einplanen und das Erfassen von Gegessenem mit wenigen Taps erreichbar. Die Navigation ist Heute, Plan, Gerichte, Historie und Mehr. Kürzlich gegessene und bereits geplante Gerichte beeinflussen neue Vorschläge. Sichtbar bleiben nur die eigenen Bewertungen. Ein optionaler Essensassistent übersetzt natürlichsprachliche Wünsche; die Auswahl bleibt regelbasiert und funktioniert auch ohne ihn. Dieselbe optionale KI kann eine Beschreibung in einen prüfbaren Entwurf für ein Gericht oder eine Variante übersetzen. Gespeichert wird erst im vorhandenen Formular. Ohne `AI_ENABLED=true` gibt es keine KI-Verbindung und die manuelle Erfassung bleibt vollständig. Der Ablauf steht in [`docs/ki-assistent.md`](docs/ki-assistent.md), die UX-Bewertung in [`docs/ux-review.md`](docs/ux-review.md).
+**Stand Iteration 9 (fachlich):** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Wochenplan und Essenshistorie. Die Startseite beantwortet „Was essen wir heute?“ und hält Vorschläge, Einplanen und das Erfassen von Gegessenem mit wenigen Taps erreichbar. Die Navigation ist Heute, Plan, Gerichte, Historie und Mehr. Kürzlich gegessene und bereits geplante Gerichte beeinflussen neue Vorschläge. Sichtbar bleiben nur die eigenen Bewertungen. Ein optionaler Essensassistent übersetzt natürlichsprachliche Wünsche; die Auswahl bleibt regelbasiert und funktioniert auch ohne ihn. Dieselbe optionale KI kann eine Beschreibung in einen prüfbaren Entwurf für ein Gericht oder eine Variante übersetzen. Gespeichert wird erst im vorhandenen Formular. Ohne `AI_ENABLED=true` gibt es keine KI-Verbindung und die manuelle Erfassung bleibt vollständig. Der Ablauf steht in [`docs/ki-assistent.md`](docs/ki-assistent.md), die UX-Bewertung in [`docs/ux-review.md`](docs/ux-review.md).
+
+**Betrieb:** Der private HTTP-Betrieb im Heimnetz ist umgesetzt und bleibt unterstützt. Ein öffentlicher Betrieb hinter HTTPS (geplant unter `https://essen.faustens.de`) ist architektonisch beschlossen, aber erst nach der Sicherheitshärtung in Iteration 10 freigegeben. Details stehen in [`docs/architektur.md`](docs/architektur.md) und [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Voraussetzungen
 
 - Java 25 (Temurin)
 - Node.js 22.12 oder neuer, npm
 - Docker mit Compose v2, für den Gesamtstart, Integrationstests und E2E-Tests
-- Für die Zielplattform: Raspberry Pi 5, `linux/arm64`
+- Unterstützte Plattformen: `linux/amd64` und `linux/arm64` (einschließlich Raspberry Pi)
 
 Windows und Linux sind beide Entwicklungsumgebungen. Pfade im Repository sind relativ.
 
@@ -113,7 +115,7 @@ Bewertungen liegen in PostgreSQL und gelten nur für die angemeldete Person. *Ni
 
 Die Anmeldung speichert nichts im `localStorage`. Das Session-Cookie `WAEW_SESSION` ist `HttpOnly` und `SameSite=Lax`. Die Sitzung läuft nach 12 Stunden ab (`APP_SESSION_TIMEOUT`). Die Checkbox „Angemeldet bleiben“ ist standardmäßig aus. Ist sie gesetzt, legt das Backend zusätzlich das Cookie `WAEW_REMEMBER` an, ebenfalls `HttpOnly` und `SameSite=Lax`, mit einer Laufzeit von 30 Tagen (`APP_REMEMBER_ME_DURATION`). In PostgreSQL steht nur ein SHA-256 des geheimen Anteils. Nach Ablauf der Sitzung oder einem Backend-Neustart entsteht daraus wieder eine normale Sitzung. Abmelden beendet das nur auf diesem Gerät. Eine Passwortänderung, eine Zurücksetzung oder eine Deaktivierung beendet alle dauerhaften Anmeldungen der Person. Zustandsändernde Aufrufe senden das Cookie `XSRF-TOKEN` als Kopfzeile `X-XSRF-TOKEN`.
 
-Im Heimnetz läuft die Anwendung über HTTP. `APP_SESSION_COOKIE_SECURE` bleibt dafür `false`, sonst speichert der Browser weder das Sitzungs- noch das Remember-me-Cookie. Steht später HTTPS vor dem Frontend, die Variable auf `true` setzen. Zusätzliche Authentifizierungscontainer sind nicht nötig. `APP_REMEMBER_ME_ENABLED=false` schaltet die Checkbox serverseitig ab, ohne die übrige Anmeldung zu ändern.
+Im Heimnetz läuft die Anwendung über HTTP. `APP_SESSION_COOKIE_SECURE` bleibt dafür `false`, sonst speichert der Browser weder das Sitzungs- noch das Remember-me-Cookie. Beim öffentlichen HTTPS-Betrieb hinter einem Reverse-Proxy muss die Variable auf `true` stehen; das verpflichtende Secure-Cookie-Profil und weitere Härtungsschritte sind Teil von Iteration 10 und noch nicht freigegeben. Backend und PostgreSQL bleiben intern. Zusätzliche Authentifizierungscontainer sind nicht nötig. `APP_REMEMBER_ME_ENABLED=false` schaltet die Checkbox serverseitig ab, ohne die übrige Anmeldung zu ändern.
 
 ## Sicherung und Wiederherstellung
 
@@ -187,9 +189,9 @@ Die Pipeline braucht weder das Heimnetz noch eine produktive Datenbank oder die 
 
 Dependabot prüft wöchentlich Gradle, npm, GitHub Actions, Dockerfiles und Compose-Images.
 
-## ARM64
+## Plattformen (amd64 und arm64)
 
-Die Dockerfiles nutzen offizielle Images mit `linux/arm64` und `linux/amd64`. Java-Bytecode ist plattformunabhängig; die Laufzeitimages bringen die passende JRE mit. Auf dem Raspberry Pi 5 genügt derselbe Compose-Start wie in der Entwicklung. Der CI-Job `ARM64` startet den Stack nativ auf einem ARM64-Runner.
+Die Dockerfiles nutzen offizielle Images mit `linux/amd64` und `linux/arm64`. Java-Bytecode ist plattformunabhängig; die Laufzeitimages bringen die passende JRE mit. Auf einem Raspberry Pi genügt derselbe Compose-Start wie in der Entwicklung. Der CI-Job `ARM64` startet den Stack nativ auf einem ARM64-Runner.
 
 Image-Builds laden Gradle und npm innerhalb der Container. Ein TLS-Interceptor, dessen Zertifikat nur im Host-Truststore liegt, lässt diesen Download im Container fehlschlagen. Auf GitHub-hosted Runnern und im normalen Heimnetz entfällt dieser Zwischenschritt.
 
