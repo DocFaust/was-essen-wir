@@ -27,6 +27,20 @@ assert_loopback_only() {
   fi
 }
 
+# Schlägt nur fehl, wenn tatsächlich Host-PortBindings existieren.
+# `docker compose port` allein ist ungeeignet: EXPOSE ohne Publish kann ":0" liefern.
+assert_no_host_port() {
+  local project="$1"
+  local service="$2"
+  local id bindings
+  id="$(docker compose --project-name "$project" ps -q "$service")"
+  [[ -n "$id" ]] || fail "Container für ${service} nicht gefunden"
+  bindings="$(docker inspect -f '{{json .HostConfig.PortBindings}}' "$id")"
+  if [[ "$bindings" != "null" && "$bindings" != "{}" && "$bindings" != "map[]" ]]; then
+    fail "${service} darf keine Host-Ports veröffentlichen: ${bindings}"
+  fi
+}
+
 echo "== Prod-Compose-Laufzeit =="
 PROD_PROJECT="was-essen-wir-prod-ci"
 PROD_PORT="18182"
@@ -50,13 +64,10 @@ curl -fsS "http://127.0.0.1:${PROD_PORT}/api/status" | grep -q '"application":"w
   || fail "Prod-API /api/status nicht erreichbar"
 curl -fsSI "http://127.0.0.1:${PROD_PORT}/" | grep -qi '^HTTP/' \
   || fail "Prod-Frontend nicht erreichbar"
-# Backend/Postgres ohne Host-Ports
-if docker compose --project-name "$PROD_PROJECT" -f compose.yaml -f compose.prod.yaml port backend 8080 >/dev/null 2>&1; then
-  fail "Backend darf keinen Host-Port veröffentlichen"
-fi
-if docker compose --project-name "$PROD_PROJECT" -f compose.yaml -f compose.prod.yaml port postgres 5432 >/dev/null 2>&1; then
-  fail "Postgres darf keinen Host-Port veröffentlichen"
-fi
+# Backend/Postgres ohne Host-Ports.
+# Hinweis: `docker compose port` kann bei bloßem EXPOSE ohne Publish ":0" mit Exit 0 liefern.
+assert_no_host_port "$PROD_PROJECT" backend
+assert_no_host_port "$PROD_PROJECT" postgres
 prod_cleanup
 trap - EXIT
 
