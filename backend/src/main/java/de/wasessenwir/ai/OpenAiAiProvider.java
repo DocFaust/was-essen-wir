@@ -43,13 +43,15 @@ final class OpenAiAiProvider implements AiProvider {
             """;
 
     private final AiProperties.OpenAi properties;
+    private final int maxOutputTokens;
     private final ObjectMapper mapper;
     private final HttpClient client;
     private final JsonNode mealSchema;
     private final JsonNode draftSchema;
 
-    OpenAiAiProvider(AiProperties.OpenAi properties, ObjectMapper mapper) {
+    OpenAiAiProvider(AiProperties.OpenAi properties, int maxOutputTokens, ObjectMapper mapper) {
         this.properties = properties;
+        this.maxOutputTokens = maxOutputTokens;
         this.mapper = mapper;
         this.client = HttpClient.newBuilder()
                 .connectTimeout(ProviderHttp.timeout(properties.timeout()))
@@ -78,6 +80,7 @@ final class OpenAiAiProvider implements AiProvider {
         }
         ObjectNode body = mapper.createObjectNode();
         body.put("model", properties.model().trim());
+        body.put("max_tokens", maxOutputTokens);
         ObjectNode format = body.putObject("response_format");
         format.put("type", "json_schema");
         ObjectNode jsonSchema = format.putObject("json_schema");

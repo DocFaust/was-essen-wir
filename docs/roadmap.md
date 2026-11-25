@@ -24,12 +24,12 @@ Jede Iteration ist für sich testbar. Fachliche Anforderungen stehen in [`fachko
     - Login-Timing geprüft: Spring Security 7.1.2 (`DaoAuthenticationProvider`) deckt unbekannte und deaktivierte Benutzer ab; keine zusätzliche App-Logik nötig.
     - Sicherheitsrelevante Regressionstests ergänzt.
 
-    10.3 – KI-Absicherung
-    - Serverseitiges Rate-Limiting.
-    - Begrenzung paralleler KI-Anfragen.
-    - Schutz vor unkontrollierten API-Kosten.
-    - Abstimmung der Provider- und Proxy-Timeouts.
-    - Test-Fixture-Provider auf den vorgesehenen Testbetrieb beschränken.
+    10.3 – KI-Absicherung – abgeschlossen.
+    - Serverseitiges Rate-Limiting und Parallelitätsgrenzen für alle KI-Endpunkte.
+    - HTTP 429 mit Retry-After und verständlicher UI-Meldung.
+    - Provider- und interner Nginx-Timeout abgestimmt; Ausgabe-Token begrenzt.
+    - Fixture-Provider auf Testprofil bzw. `AI_ALLOW_FIXTURE` beschränkt.
+    - Nutzungslimits begrenzen das Anfragevolumen, ersetzen aber keine Provider-Kostenkontrollen.
 
     10.4 – Produktionsdeployment
     - Sicheres Betriebsprofil hinter einem HTTPS-Reverse-Proxy.

@@ -116,6 +116,61 @@ test('zeigt einen Fehler und erlaubt einen neuen Versuch', async () => {
   expect(screen.getByTestId('ai-message')).toHaveValue('');
 });
 
+test('zeigt das Tageslimit ohne erneuten Versuch und verhindert Doppelklicks', async () => {
+  let resolveRecommendation: (value: Response) => void = () => undefined;
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/api/ai/status')) {
+      return json({ enabled: true, provider: 'ollama' });
+    }
+    if (url.includes('/api/members')) {
+      return json([{ id: 'ada', displayName: 'Ada Lovelace' }]);
+    }
+    if (url.includes('/api/ai/recommendations')) {
+      return new Promise<Response>((resolve) => {
+        resolveRecommendation = resolve;
+      });
+    }
+    return json({ title: 'Fehler', detail: 'Unerwartete Anfrage', status: 500 }, 500);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  renderAssistant();
+  await screen.findByTestId('ai-message');
+  await userEvent.type(screen.getByTestId('ai-message'), 'Nudeln');
+  await userEvent.click(screen.getByTestId('ai-submit'));
+  expect(screen.getByTestId('ai-submit')).toBeDisabled();
+  expect(fetchMock.mock.calls.filter((entry) => String(entry[0]).includes('/api/ai/recommendations'))).toHaveLength(1);
+
+  resolveRecommendation(
+    json(
+      {
+        title: 'Zu viele Versuche',
+        detail: 'Das Tageslimit für den Essensassistenten ist erreicht. Bitte versuche es morgen erneut.',
+        status: 429,
+        code: 'AI_DAILY_LIMIT',
+      },
+      429,
+    ),
+  );
+
+  expect(await screen.findByTestId('ai-error')).toHaveTextContent('Tageslimit');
+  expect(screen.queryByRole('button', { name: 'Erneut versuchen' })).not.toBeInTheDocument();
+});
+
+test('zeigt vorübergehende Auslastung mit manuellem erneuten Versuch', async () => {
+  mockFetch({
+    status: { enabled: true, provider: 'ollama' },
+    rateLimited: true,
+  });
+  renderAssistant();
+  await screen.findByTestId('ai-message');
+  await userEvent.type(screen.getByTestId('ai-message'), 'Was essen wir?');
+  await userEvent.click(screen.getByTestId('ai-submit'));
+
+  expect(await screen.findByTestId('ai-error')).toHaveTextContent('zu oft genutzt');
+  expect(screen.getByRole('button', { name: 'Erneut versuchen' })).toBeInTheDocument();
+});
+
 test('zeigt einen Ladezustand und startet danach eine neue Anfrage', async () => {
   let resolveRecommendation: (value: Response) => void = () => undefined;
   vi.stubGlobal(
@@ -160,6 +215,7 @@ function mockFetch(options: {
   status: { enabled: boolean; provider: string | null };
   result?: AiRecommendationResponse;
   fail?: boolean;
+  rateLimited?: boolean;
 }) {
   const fetchMock = vi.fn<typeof fetch>(async (input) => {
     const url = String(input);
@@ -172,6 +228,17 @@ function mockFetch(options: {
     if (url.includes('/api/ai/recommendations')) {
       if (options.fail) {
         return json({ title: 'Fehler', detail: 'Der Essensassistent ist gerade nicht erreichbar.', status: 503 }, 503);
+      }
+      if (options.rateLimited) {
+        return json(
+          {
+            title: 'Zu viele Versuche',
+            detail: 'Du hast den Essensassistenten zu oft genutzt. Bitte warte einen Moment.',
+            status: 429,
+            code: 'AI_RATE_LIMITED',
+          },
+          429,
+        );
       }
       return json(options.result);
     }

@@ -83,6 +83,7 @@ class AiOllamaIntegrationTest {
         registry.add("app.ai.ollama.base-url", () -> "http://127.0.0.1:" + SERVER.getAddress().getPort());
         registry.add("app.ai.ollama.model", () -> "test-model");
         registry.add("app.ai.ollama.timeout", () -> "2s");
+        AiTestSupport.disableUsageLimits(registry);
     }
 
     @Autowired

@@ -55,6 +55,7 @@ class AiUnreachableIntegrationTest {
         registry.add("app.ai.provider", () -> "ollama");
         registry.add("app.ai.ollama.base-url", () -> "http://127.0.0.1:" + CLOSED_PORT);
         registry.add("app.ai.ollama.timeout", () -> "1s");
+        AiTestSupport.disableUsageLimits(registry);
     }
 
     @Autowired

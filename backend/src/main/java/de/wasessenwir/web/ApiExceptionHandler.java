@@ -4,7 +4,9 @@ import de.wasessenwir.dish.DuplicateDishException;
 import de.wasessenwir.dish.DuplicateVariantException;
 import de.wasessenwir.dish.InvalidRequestException;
 import de.wasessenwir.dish.NotFoundException;
+import java.time.Duration;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +20,12 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     ResponseEntity<ProblemDetail> api(ApiException exception) {
-        return problem(exception.status(), exception.getMessage(), exception.code());
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(exception.status());
+        Duration retryAfter = exception.retryAfter();
+        if (retryAfter != null && !retryAfter.isNegative() && !retryAfter.isZero()) {
+            builder.header(HttpHeaders.RETRY_AFTER, String.valueOf(Math.max(1, retryAfter.toSeconds())));
+        }
+        return builder.body(ApiProblems.of(exception.status(), ApiProblems.title(exception.status()), exception.getMessage(), exception.code()));
     }
 
     @ExceptionHandler(InvalidRequestException.class)

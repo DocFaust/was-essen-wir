@@ -57,6 +57,7 @@ class DishDraftIntegrationTest {
     static void ai(DynamicPropertyRegistry registry) {
         registry.add("app.ai.enabled", () -> "true");
         registry.add("app.ai.provider", () -> "fixture");
+        AiTestSupport.disableUsageLimits(registry);
     }
 
     @Autowired

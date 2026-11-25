@@ -10,11 +10,13 @@ import java.util.Map;
 final class OllamaAiProvider implements AiProvider {
 
     private final AiProperties.Ollama properties;
+    private final int maxOutputTokens;
     private final ObjectMapper mapper;
     private final HttpClient client;
 
-    OllamaAiProvider(AiProperties.Ollama properties, ObjectMapper mapper) {
+    OllamaAiProvider(AiProperties.Ollama properties, int maxOutputTokens, ObjectMapper mapper) {
         this.properties = properties;
+        this.maxOutputTokens = maxOutputTokens;
         this.mapper = mapper;
         this.client = HttpClient.newBuilder()
                 .connectTimeout(ProviderHttp.timeout(properties.timeout()))
@@ -44,7 +46,9 @@ final class OllamaAiProvider implements AiProvider {
             body.set("format", schema);
         }
         body.put("think", false);
-        body.putObject("options").put("temperature", 0);
+        var options = body.putObject("options");
+        options.put("temperature", 0);
+        options.put("num_predict", maxOutputTokens);
         var messages = body.putArray("messages");
         messages.addObject().put("role", "system").put("content", systemPrompt);
         messages.addObject().put("role", "user").put("content", userMessage);
