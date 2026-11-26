@@ -111,6 +111,17 @@ jobs:
           scanners: vuln
           trivyignores: .trivyignore
 
+      - name: Image-Reports im Log ausgeben
+        if: ${{ failure() }}
+        run: |
+          for report in trivy-backend.txt trivy-frontend.txt trivy-postgres.txt; do
+            if [[ -s "$report" ]]; then
+              echo "::group::$report"
+              cat "$report"
+              echo "::endgroup::"
+            fi
+          done
+
       - name: Image-Reports hochladen
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7.0.2
