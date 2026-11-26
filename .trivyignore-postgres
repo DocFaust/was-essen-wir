@@ -1,0 +1,37 @@
+# Ausnahmen nur für den Scan von postgres:17-alpine (CI-Schritt "Trivy – PostgreSQL-Image").
+# Begründung und Wiedervorlage: docs/security-exceptions.md.
+# Die übrigen Scans nutzen diese Datei nicht.
+
+# libxml2 im Basis-Image, Fix in Alpine 2.13.9-r3 verfügbar, Upstream-Image noch nicht neu gebaut.
+# Wiedervorlage: 2026-12-10
+CVE-2026-86144
+
+# Go-Standardbibliothek in usr/local/bin/gosu (gebaut mit Go 1.24.6).
+# gosu wechselt beim Start nur den Benutzer und führt kein TLS, kein x509 und kein URL-Parsing aus.
+# Wiedervorlage: 2027-02-24
+CVE-2025-61726
+CVE-2025-61729
+CVE-2025-68121
+CVE-2026-111943
+CVE-2026-25679
+CVE-2026-27145
+CVE-2026-32280
+CVE-2026-32281
+CVE-2026-32283
+CVE-2026-33811
+CVE-2026-33814
+CVE-2026-33818
+CVE-2026-39820
+CVE-2026-39821
+CVE-2026-39822
+CVE-2026-39836
+CVE-2026-42499
+CVE-2026-42504
+CVE-2026-56853
+CVE-2026-56858
+CVE-2026-56859
+CVE-2026-56860
+CVE-2026-56862
+CVE-2026-78667
+CVE-2026-78669
+CVE-2026-97031

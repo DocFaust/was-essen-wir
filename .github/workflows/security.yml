@@ -109,7 +109,7 @@ jobs:
           format: table
           output: trivy-postgres.txt
           scanners: vuln
-          trivyignores: .trivyignore
+          trivyignores: .trivyignore,.trivyignore-postgres
 
       - name: Image-Reports im Log ausgeben
         if: ${{ failure() }}
