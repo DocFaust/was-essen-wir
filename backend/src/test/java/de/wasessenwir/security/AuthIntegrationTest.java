@@ -53,6 +53,7 @@ import org.testcontainers.utility.DockerImageName;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
             "app.security.login-max-attempts=3",
+            "app.security.login-ip-max-attempts=6",
             "app.security.setup-max-attempts=3",
             "app.security.login-window=PT15M",
             "app.security.setup-window=PT15M"
@@ -428,6 +429,46 @@ class AuthIntegrationTest {
                 "/api/auth/login", new LoginRequest("ada", ADMIN_PASSWORD), String.class);
         assertThat(limited.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(api.getForEntity("/api/auth/me", UserResponse.class).getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void loginAttemptsWithChangingUsernamesAreLimitedPerClientIp() {
+        TestRestTemplate api = adminSession();
+        TestRestTemplate attacker = session();
+        int keysBefore = limiter.size();
+        for (int attempt = 0; attempt < 6; attempt++) {
+            assertThat(attacker.postForEntity(
+                            "/api/auth/login", new LoginRequest("unbekannt-" + attempt, "falsches-passwort"), String.class)
+                    .getStatusCode())
+                    .isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+        ResponseEntity<String> limited = attacker.postForEntity(
+                "/api/auth/login", new LoginRequest("unbekannt-6", "falsches-passwort"), String.class);
+        assertThat(limited.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(limited.getBody()).contains("LOGIN_RATE_LIMITED");
+        // Ein IP-Schlüssel plus höchstens ein Schlüssel je zugelassenem Versuch.
+        assertThat(limiter.size()).isLessThanOrEqualTo(keysBefore + 1 + 6);
+        assertThat(attacker.postForEntity("/api/auth/login", new LoginRequest(ADMIN, ADMIN_PASSWORD), String.class)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(api.getForEntity("/api/auth/me", UserResponse.class).getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void blankLoginAttemptsCountPerClientIpWithoutCreatingUsernameKeys() {
+        adminSession();
+        TestRestTemplate attacker = session();
+        int keysBefore = limiter.size();
+        for (int attempt = 0; attempt < 6; attempt++) {
+            assertThat(attacker.postForEntity("/api/auth/login", new LoginRequest("leer-" + attempt, ""), String.class)
+                            .getStatusCode())
+                    .isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+        assertThat(limiter.size()).isEqualTo(keysBefore + 1);
+        ResponseEntity<String> limited =
+                attacker.postForEntity("/api/auth/login", new LoginRequest("leer-6", ""), String.class);
+        assertThat(limited.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(limiter.size()).isEqualTo(keysBefore + 1);
     }
 
     private TestRestTemplate adminSession() {

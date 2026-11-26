@@ -23,8 +23,8 @@ Bereits in 10.2–10.4 behobene Punkte werden nur bei neuen Erkenntnissen erneut
 | Rollen | **OK** | `ADMIN` / `MEMBER`; Benutzerverwaltung nur Admin. |
 | CSRF | **OK** | Cookie-Repository + Header; Frontend sendet `X-XSRF-TOKEN`. |
 | Persönliche Bewertungen | **OK** | `user_id` nur aus Sitzung; keine fremden Sterne in API (`RatingController`/Service, `RatingIntegrationTest`). |
-| Brute-Force | **OK** | `AttemptLimiter` für Login/Setup/Passwort; Kapazitätsgrenze und keine Verdrängung aktiver Sperren (10.2, `AttemptLimiterTest`). |
-| AttemptLimiter-Speicher | **OK** | `APP_ATTEMPT_LIMITER_MAX_KEYS` (Standard 10000); In-Memory pro Instanz (bewusst, eine Backend-Instanz). |
+| Brute-Force | **OK** (nachgebessert) | `AttemptLimiter` für Login/Setup/Passwort; Kapazitätsgrenze und keine Verdrängung aktiver Sperren (10.2, `AttemptLimiterTest`). Zusätzlich Login-Grenze pro Client-IP (`APP_LOGIN_IP_MAX_ATTEMPTS`), `AuthIntegrationTest`. |
+| AttemptLimiter-Speicher | **OK** (nachgebessert) | `APP_ATTEMPT_LIMITER_MAX_KEYS` (Standard 10000); In-Memory pro Instanz. Befund nach 10.5: Der Login-Schlüssel enthielt den Benutzernamen, und das Limit lief vor der Prüfung auf leere Eingaben. Eine einzelne IP konnte mit wechselnden Benutzernamen die Kapazität füllen und damit neue Anmeldungen für alle blockieren (Fail-closed). Behoben durch die Grenze pro Client-IP vor dem Benutzerschlüssel. |
 | Login-Timing | **OK** | Spring Security Dummy-Hash (10.2, `LoginTimingProtectionTest`). |
 
 Verbleibend:
@@ -119,6 +119,7 @@ Keine ungeklärten HIGH für die technische Deployment-Bereitschaft.
 1. In-Memory-Limiter nur pro Instanz (architekturell akzeptiert).
 2. Loopback-Bypass des Host-Nginx (dokumentiertes lokales Restrisiko).
 3. Externe Backup-Aufbewahrung ist Betriebsaufgabe, nicht automatisiert im Repo.
+4. Kein Limit pro Benutzerkonto über alle IPs: Ein verteilter Angriff aus vielen IPs kann pro IP `APP_LOGIN_MAX_ATTEMPTS` Passwörter testen. Sehr viele IPs, etwa aus einem IPv6-Präfix, können die Schlüsselkapazität weiterhin füllen.
 
 ### NOT VERIFIED (Zielserver)
 

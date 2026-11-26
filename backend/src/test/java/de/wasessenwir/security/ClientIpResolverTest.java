@@ -66,6 +66,7 @@ class ClientIpResolverTest {
         return new ClientIpResolver(new SecurityProperties(
                 8,
                 Duration.ofMinutes(15),
+                30,
                 8,
                 Duration.ofMinutes(15),
                 100,

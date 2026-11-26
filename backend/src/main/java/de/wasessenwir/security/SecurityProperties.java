@@ -9,6 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record SecurityProperties(
         int loginMaxAttempts,
         Duration loginWindow,
+        int loginIpMaxAttempts,
         int setupMaxAttempts,
         Duration setupWindow,
         int attemptLimiterMaxKeys,
