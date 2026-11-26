@@ -2,9 +2,9 @@
 
 Selbst gehosteter Familien-Essensplaner für genau eine Familie pro Installation. Mobile-first, ohne öffentliche Registrierung und ohne Multi-Tenancy. Die Anwendung bleibt eine private Familienanwendung, auch wenn sie später über das Internet erreichbar ist.
 
-**Stand Iteration 10.4:** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Wochenplan und Essenshistorie. Die Startseite beantwortet „Was essen wir heute?“ und hält Vorschläge, Einplanen und das Erfassen von Gegessenem mit wenigen Taps erreichbar. Die Navigation ist Heute, Plan, Gerichte, Historie und Mehr. Ein optionaler Essensassistent und die KI-Gerichteerfassung laufen nur serverseitig; ohne `AI_ENABLED=true` gibt es keine KI-Verbindung. KI-Aufrufe unterliegen gemeinsamen Nutzungslimits und Parallelitätsgrenzen. Der Ablauf steht in [`docs/ki-assistent.md`](docs/ki-assistent.md), die UX-Bewertung in [`docs/ux-review.md`](docs/ux-review.md).
+**Stand Iteration 10.5:** Gerichteverwaltung, lokale Anmeldung, persönliche Sternebewertungen, regelbasierte Essensvorschläge, Wochenplan und Essenshistorie. Die Startseite beantwortet „Was essen wir heute?“ und hält Vorschläge, Einplanen und das Erfassen von Gegessenem mit wenigen Taps erreichbar. Die Navigation ist Heute, Plan, Gerichte, Historie und Mehr. Ein optionaler Essensassistent und die KI-Gerichteerfassung laufen nur serverseitig; ohne `AI_ENABLED=true` gibt es keine KI-Verbindung. KI-Aufrufe unterliegen gemeinsamen Nutzungslimits und Parallelitätsgrenzen. Der Ablauf steht in [`docs/ki-assistent.md`](docs/ki-assistent.md), die UX-Bewertung in [`docs/ux-review.md`](docs/ux-review.md).
 
-**Betrieb:** Der private HTTP-Betrieb im Heimnetz ist umgesetzt und bleibt unterstützt. Das öffentliche HTTPS-Profil hinter Host-Nginx (`compose.prod.yaml`, geplant unter `https://essen.faustens.de`) ist umgesetzt, der Produktivstart aber erst nach Iteration 10.5 freigegeben. Anleitung: [`docs/deployment.md`](docs/deployment.md).
+**Betrieb:** Der private HTTP-Betrieb im Heimnetz ist umgesetzt und bleibt unterstützt. Das öffentliche HTTPS-Profil hinter Host-Nginx (`compose.prod.yaml`, geplant unter `https://essen.faustens.de`) ist technisch bereit (Backup/Restore, CI-Scans, Review). Die Betriebsfreigabe erfolgt erst nach erfolgreicher Prüfung auf dem Zielserver. Anleitung: [`docs/deployment.md`](docs/deployment.md), Checkliste: [`docs/go-live-checklist.md`](docs/go-live-checklist.md).
 
 ## Voraussetzungen
 
@@ -140,6 +140,8 @@ Im Heimnetz läuft die Anwendung über HTTP. `APP_SESSION_COOKIE_SECURE` bleibt 
 
 Benutzer und der Einrichtungszustand liegen in PostgreSQL, Sitzungen nur im Speicher des Backends. Ein Neustart beendet deshalb offene Sitzungen. Wer „Angemeldet bleiben“ gewählt hat, erhält beim nächsten Öffnen eine neue Sitzung, solange das Geräte-Token gilt. Die Remember-me-Zeilen liegen in derselben Datenbank und bleiben bei einem normalen Update erhalten.
 
+PostgreSQL-Backups: `./scripts/backup-postgres.sh` (Custom-Format, Host-Verzeichnis, Retention). Wiederherstellung: `CONFIRM=YES BACKUP_FILE=… ./scripts/restore-postgres.sh` (invalidiert Remember-me). Details und systemd-Timer: [`docs/deployment.md`](docs/deployment.md). Isolierter Laufzeittest: `./scripts/ci-backup-restore.sh`.
+
 Eine Sicherung von vor der Einrichtung enthält den Token-Hash, nicht den Klartext. Fehlt das alte Log, das Token wie oben rotieren. `down --volumes` löscht die Datenbank und startet die Einrichtung von vorn; Gerichte gehen dabei mit verloren.
 
 ## Backend- und Frontend-Build
@@ -202,7 +204,10 @@ npm run test:e2e
 - Frontend: `npm ci`, TypeScript, Lint, Vitest mit Coverage-Grenze, Production-Build. Der Coverage-Report wird ebenfalls als Artifact hochgeladen.
 - E2E: Compose-Stack, Playwright, Screenshots und Traces bei Fehlern
 - Compose-Konfiguration und Laufzeittest (Prod-Override inkl. Healthchecks/API/Loopback-Port sowie lokale HTTP-Compose)
+- Backup-/Restore-Laufzeittest (`scripts/ci-backup-restore.sh`)
 - Nativer Lauf auf `ubuntu-24.04-arm`: Image-Build und Abruf von `/api/status`
+
+Zusätzlich `.github/workflows/security.yml` (PRs, `main`, wöchentlich): Trivy für Abhängigkeiten und Container-Images (Backend, Frontend, PostgreSQL) sowie `npm audit --omit=dev`.
 
 Die Pipeline braucht weder das Heimnetz noch eine produktive Datenbank oder die OpenAI-API.
 
@@ -220,6 +225,8 @@ Image-Builds laden Gradle und npm innerhalb der Container. Ein TLS-Interceptor, 
 - [`docs/architektur.md`](docs/architektur.md)
 - [`docs/roadmap.md`](docs/roadmap.md)
 - [`docs/deployment.md`](docs/deployment.md)
+- [`docs/go-live-checklist.md`](docs/go-live-checklist.md)
+- [`docs/security-review-10.5.md`](docs/security-review-10.5.md)
 - [`docs/test-coverage.md`](docs/test-coverage.md)
 - [`docs/datenmodell.md`](docs/datenmodell.md)
 - [`AGENTS.md`](AGENTS.md)

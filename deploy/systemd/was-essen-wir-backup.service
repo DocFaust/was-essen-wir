@@ -1,0 +1,31 @@
+[Unit]
+Description=Was essen wir – PostgreSQL-Backup
+Documentation=file:///opt/was-essen-wir/docs/deployment.md
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Anpassen: Installationsverzeichnis und Benutzer auf dem Host.
+WorkingDirectory=/opt/was-essen-wir
+User=wasessenwir
+Group=wasessenwir
+# Keine Secrets in der Unit – Zugangsdaten liegen in .env und im Postgres-Container.
+Environment=BACKUP_DIR=/var/backups/was-essen-wir
+Environment=RETENTION_DAYS=30
+Environment=COMPOSE_FILES=compose.yaml compose.prod.yaml
+Environment=WAEW_ENV_FILE=/opt/was-essen-wir/.env
+# Optional, falls der Compose-Projektname abweicht:
+# Environment=COMPOSE_PROJECT_NAME=was-essen-wir
+ExecStart=/opt/was-essen-wir/scripts/backup-postgres.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+# Kein Persistieren von Umgebungsgeheimnissen in Journald-Extras.
+LogRateLimitIntervalSec=30s
+LogRateLimitBurst=100
+
+[Install]
+WantedBy=multi-user.target

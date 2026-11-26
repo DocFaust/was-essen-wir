@@ -39,12 +39,11 @@ Jede Iteration ist für sich testbar. Fachliche Anforderungen stehen in [`fachko
     - Request-Größenbegrenzung einheitlich 256 KiB (Nginx und Backend, inkl. Chunked).
     - Deployment-Anleitung in `docs/deployment.md`; automatisierte Compose- und Sicherheitstests.
 
-    10.5 – Betriebssicherheit
-    - Datenbanksicherung und Wiederherstellung.
-    - Überprüfbarer Backup-/Restore-Prozess.
-    - Angemessene Sicherheitsprüfungen in der CI-Pipeline.
-    - Betriebs- und Deployment-Dokumentation.
-    - Abschließende Prüfung der Deployment-Reife.
+    10.5 – Betriebssicherheit – abgeschlossen.
+    - PostgreSQL-Backup/`pg_restore` inkl. systemd-Timer-Vorlage und Token-Invalidierung nach Restore.
+    - Isolierter Backup-/Restore-CI-Test; Trivy- und npm-audit-Scans in GitHub Actions.
+    - Erweiterte Betriebsdokumentation, Sicherheitsreview und Go-Live-Checkliste.
+    - Technische Deployment-Bereitschaft im Repository; Betriebsfreigabe erst nach Prüfung auf dem Zielserver.
 
 11. **Familienabstimmung und Lernen.** Optionale Abstimmungen und schwache lernende Signale.
 

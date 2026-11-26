@@ -1,0 +1,6 @@
+# Dokumentierte Trivy-Ausnahmen (CVE-ID pro Zeile).
+# Jede Ausnahme braucht einen Eintrag in docs/security-exceptions.md
+# mit Begründung und Wiedervorlagedatum. Keine pauschalen Ausnahmen.
+#
+# Beispiel:
+# CVE-2024-0000

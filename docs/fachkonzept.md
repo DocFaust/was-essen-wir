@@ -164,7 +164,7 @@ Anforderungen an die technische Modellierung: Variantenvererbung mit klarer Übe
 - Backend Spring Boot / Java 25, Frontend React / MUI, PostgreSQL, Schema-Migrationen mit Flyway.
 - Zugriff nur nach Anmeldung. Im Heimnetz über HTTP; im öffentlichen Betrieb ausschließlich über HTTPS hinter einem Reverse-Proxy. Backend und PostgreSQL werden nicht öffentlich exponiert.
 - Konfigurierbare API-Ausgabenlimits/Budgetüberwachung; keine API-Schlüssel im Frontend. Bei externen KI-Providern sind Missbrauch und unkontrollierte API-Kosten zu begrenzen (Absicherung geplant in Iteration 10.3).
-- Regelmäßige Datenbanksicherung und dokumentierte Wiederherstellung (Betriebssicherheit geplant in Iteration 10.5).
+- Regelmäßige Datenbanksicherung und dokumentierte Wiederherstellung (umgesetzt in Iteration 10.5, siehe [`deployment.md`](deployment.md)).
 - Nachvollziehbare Empfehlungsergebnisse, Tests für Berechtigungen, Varianten und Ausschlussregeln.
 
 ## 13. Umsetzungsetappen

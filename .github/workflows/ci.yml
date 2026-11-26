@@ -139,6 +139,19 @@ jobs:
             docker compose -f compose.yaml config --quiet
           ./scripts/ci-compose-runtime.sh
 
+  backup-restore:
+    name: Backup/Restore
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Quellcode holen
+        uses: actions/checkout@v7.0.1
+
+      - name: Backup- und Restore-Laufzeittest
+        run: |
+          chmod +x scripts/backup-postgres.sh scripts/restore-postgres.sh scripts/ci-backup-restore.sh scripts/lib/compose-env.sh
+          ./scripts/ci-backup-restore.sh
+
   arm64:
     name: ARM64
     runs-on: ubuntu-24.04-arm
