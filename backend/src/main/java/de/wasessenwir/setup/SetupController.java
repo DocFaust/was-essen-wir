@@ -1,5 +1,6 @@
 package de.wasessenwir.setup;
 
+import de.wasessenwir.security.ClientIpResolver;
 import de.wasessenwir.user.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -15,9 +16,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class SetupController {
 
     private final SetupService setup;
+    private final ClientIpResolver clientIpResolver;
 
-    public SetupController(SetupService setup) {
+    public SetupController(SetupService setup, ClientIpResolver clientIpResolver) {
         this.setup = setup;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @GetMapping("/status")
@@ -27,6 +30,7 @@ public class SetupController {
 
     @PostMapping
     ResponseEntity<UserResponse> complete(@RequestBody SetupRequest request, HttpServletRequest httpRequest) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(setup.complete(request, httpRequest.getRemoteAddr()));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(setup.complete(request, clientIpResolver.resolve(httpRequest)));
     }
 }

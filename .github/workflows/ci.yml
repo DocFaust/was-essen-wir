@@ -127,18 +127,17 @@ jobs:
   compose:
     name: Compose
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 45
     steps:
       - name: Quellcode holen
         uses: actions/checkout@v7.0.1
 
-      - name: Compose-Konfiguration validieren
-        env:
-          POSTGRES_DB: wasessenwir
-          POSTGRES_USER: wasessenwir
-          POSTGRES_PASSWORD: ci-validation-only
-          APP_PORT: "8080"
-        run: docker compose -f compose.yaml config --quiet
+      - name: Compose-Konfiguration und Laufzeit prüfen
+        run: |
+          chmod +x scripts/validate-compose-prod.sh scripts/ci-compose-runtime.sh
+          POSTGRES_DB=wasessenwir POSTGRES_USER=wasessenwir POSTGRES_PASSWORD=ci-validation-only \
+            docker compose -f compose.yaml config --quiet
+          ./scripts/ci-compose-runtime.sh
 
   arm64:
     name: ARM64

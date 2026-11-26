@@ -26,6 +26,7 @@ import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
@@ -76,6 +77,16 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                         .sessionFixation(fixation -> fixation.changeSessionId()))
+                .headers(headers -> headers
+                        .contentTypeOptions(Customizer.withDefaults())
+                        .frameOptions(frame -> frame.deny())
+                        .referrerPolicy(referrer ->
+                                referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .permissionsPolicyHeader(permissions ->
+                                permissions.policy(SecurityHeaders.PERMISSIONS_POLICY))
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(SecurityHeaders.CONTENT_SECURITY_POLICY))
+                        // HSTS setzt ausschließlich der HTTPS-terminierende Host-Nginx (siehe docs/deployment.md).
+                        .httpStrictTransportSecurity(hsts -> hsts.disable()))
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(handlers::unauthenticated)
                         .accessDeniedHandler(handlers::denied))

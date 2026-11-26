@@ -18,6 +18,10 @@ server:
     include-message: never
     include-binding-errors: never
     include-stacktrace: never
+  tomcat:
+    # Zusätzliche Tomcat-Grenze; die fachliche Prüfung liegt in RequestSizeLimitFilter.
+    max-http-form-post-size: ${APP_MAX_REQUEST_SIZE:256KB}
+    max-swallow-size: ${APP_MAX_REQUEST_SIZE:256KB}
   servlet:
     session:
       timeout: ${APP_SESSION_TIMEOUT:12h}
@@ -30,6 +34,8 @@ server:
 
 app:
   time-zone: ${APP_TIME_ZONE:Europe/Berlin}
+  # Abgestimmt mit Nginx client_max_body_size (256k) und Rezepttext-Maximum (20000 Zeichen).
+  max-request-size: ${APP_MAX_REQUEST_SIZE:256KB}
   setup:
     token-ttl: ${APP_SETUP_TOKEN_TTL:PT24H}
     rotate-token: ${APP_SETUP_ROTATE_TOKEN:false}
@@ -39,6 +45,10 @@ app:
     setup-max-attempts: ${APP_SETUP_MAX_ATTEMPTS:8}
     setup-window: ${APP_SETUP_WINDOW:PT15M}
     attempt-limiter-max-keys: ${APP_ATTEMPT_LIMITER_MAX_KEYS:10000}
+    require-secure-cookies: ${APP_REQUIRE_SECURE_COOKIES:false}
+    forward-client-ip: ${APP_FORWARD_CLIENT_IP:false}
+    # Kommagetrennte CIDRs. Nur wirksam mit forward-client-ip=true.
+    trusted-proxies: ${APP_TRUSTED_PROXIES:}
   remember-me:
     enabled: ${APP_REMEMBER_ME_ENABLED:true}
     duration: ${APP_REMEMBER_ME_DURATION:P30D}

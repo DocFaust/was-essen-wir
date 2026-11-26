@@ -34,7 +34,8 @@ public class AttemptLimiter {
     static AttemptLimiter forTests(Clock clock, int maxKeys) {
         return new AttemptLimiter(
                 clock,
-                new SecurityProperties(8, Duration.ofMinutes(15), 8, Duration.ofMinutes(15), maxKeys));
+                new SecurityProperties(
+                        8, Duration.ofMinutes(15), 8, Duration.ofMinutes(15), maxKeys, false, false, ""));
     }
 
     public boolean tryAcquire(String key, int maxAttempts, Duration window) {
