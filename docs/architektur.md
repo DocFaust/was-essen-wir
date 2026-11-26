@@ -1,6 +1,6 @@
 # Architektur
 
-**Stand:** 25.11.2026
+**Stand:** 26.11.2026
 
 ## Entscheidungen
 
@@ -11,7 +11,7 @@
 - Betrieb: Docker Compose. Unterstützte Plattformen: `linux/amd64` und `linux/arm64`. Der Raspberry Pi bleibt eine unterstützte Plattform. Entwicklung auf Windows und Linux.
 - Betriebsmodi:
   - **Heimnetz (umgesetzt):** privater HTTP-Betrieb im lokalen Netz. `APP_SESSION_COOKIE_SECURE` bleibt dafür `false`.
-  - **Öffentlich (umgesetzt, noch nicht freigegeben):** Betrieb hinter dem bestehenden Host-Nginx mit TLS-Terminierung, geplant unter `https://essen.faustens.de` (`compose.yaml` + `compose.prod.yaml`). Das Frontend lauscht nur auf `127.0.0.1`. Backend und PostgreSQL bleiben ohne veröffentlichte Ports. Secure-Cookies sind verpflichtend (`APP_REQUIRE_SECURE_COOKIES`). Keine Keycloak-/OAuth-Infrastruktur. Anleitung in [`deployment.md`](deployment.md). Der öffentliche Produktivstart ist erst nach Iteration 10.5 freigegeben.
+  - **Öffentlich (technisch bereit, Betriebsfreigabe ausstehend):** Betrieb hinter dem bestehenden Host-Nginx mit TLS-Terminierung, geplant unter `https://essen.faustens.de` (`compose.yaml` + `compose.prod.yaml`). Das Frontend lauscht nur auf `127.0.0.1`. Backend und PostgreSQL bleiben ohne veröffentlichte Ports. Secure-Cookies sind verpflichtend (`APP_REQUIRE_SECURE_COOKIES`). Backup/Restore und CI-Sicherheitsscans sind umgesetzt (Iteration 10.5). Keine Keycloak-/OAuth-Infrastruktur. Anleitung in [`deployment.md`](deployment.md). Die Betriebsfreigabe erfolgt erst nach erfolgreicher Prüfung auf dem Zielserver ([`go-live-checklist.md`](go-live-checklist.md)).
 - Konfiguration über Umgebungsvariablen. `.env` bleibt lokal. `.env.example` enthält keine echten Geheimnisse.
 - Authentifizierung: Spring Security mit lokaler Benutzerverwaltung, serverseitigen HTTP-Sessions und optionalem Remember-me. Keine Keycloak-, OAuth2-, JWT- oder separate Authentifizierungsinfrastruktur. Keine öffentliche Selbstregistrierung und keine E-Mail-Verifizierung.
 - KI optional über eine austauschbare Provider-Abstraktion. Ollama und die OpenAI-Chat-Completions-API laufen nur serverseitig. Die KI erhält keinen Datenbankzugriff, wählt keine Gerichte selbst und speichert keine Gerichte. Kernfunktionen bleiben ohne LLM nutzbar. Missbrauch und unkontrollierte API-Kosten bei externen Providern werden durch serverseitige Nutzungslimits, Parallelitätsgrenzen und Ausgabe-Token-Begrenzung eingedämmt (Iteration 10.3). Die Limits begrenzen das Anfragevolumen und sind kein garantiertes Ausgabenlimit; zusätzliche Provider-Kontrollen bleiben empfohlen. Der Ablauf steht in [`ki-assistent.md`](ki-assistent.md).
@@ -66,7 +66,7 @@ Die Oberfläche priorisiert die täglichen Aufgaben, ohne neue Fachendpunkte. Di
 
 ## Iteration 10
 
-Public Deployment Hardening. Die Architekturentscheidungen für Heimnetz und öffentlichen HTTPS-Betrieb stehen oben. Betriebssicherheit (Backup, CI-Scans, Freigabe) folgt in 10.5 laut [`roadmap.md`](roadmap.md). Bis dahin bleibt der produktive öffentliche Betrieb gesperrt.
+Public Deployment Hardening. Die Architekturentscheidungen für Heimnetz und öffentlichen HTTPS-Betrieb stehen oben. Iteration 10.5 schließt Betriebssicherheit (Backup/Restore, CI-Scans, Review, Checkliste) ab. Der produktive öffentliche Betrieb bleibt bis zur erfolgreichen Go-Live-Prüfung auf dem Zielserver gesperrt.
 
 ### Iteration 10.2 – Anwendungssicherheit
 
@@ -81,7 +81,7 @@ Public Deployment Hardening. Die Architekturentscheidungen für Heimnetz und öf
 - **Timeouts:** Provider-Standard 30s (`OLLAMA_TIMEOUT` / `OPENAI_TIMEOUT`). Internes Nginx für `/api/ai/` 45s Lese-/Sende-Timeout, übrige `/api/` 10s. Provider-Timeouts müssen unter dem Proxy-Timeout bleiben. Ausgabe zusätzlich über `AI_MAX_OUTPUT_TOKENS` (Standard 1024) begrenzt; Eingabe- und Antwortgrößengrenzen bleiben.
 - **Fixture:** Nur mit Spring-Profil `test` oder `AI_ALLOW_FIXTURE=true`. Nicht für den Produktivbetrieb.
 - **Kosten:** Die Limits begrenzen das Anfragevolumen, nicht die Euro-Kosten. Zusätzliche Nutzungs- und Kostenkontrollen des externen Providers bleiben empfohlen. Bei `AI_ENABLED=false` gibt es keine externen Aufrufe.
-- **Verbleibend für den öffentlichen Betrieb:** Backup/Restore, CI-Sicherheitsscans und Betriebsfreigabe folgen in 10.5. AttemptLimiter und AI-Limits sind pro Instanz.
+- AttemptLimiter und AI-Limits sind pro Instanz (eine Backend-Instanz).
 
 ### Iteration 10.4 – Produktionsdeployment
 
@@ -91,3 +91,10 @@ Public Deployment Hardening. Die Architekturentscheidungen für Heimnetz und öf
 - **Request-Größe:** Host-Nginx, Frontend-Nginx und Backend begrenzen auf 256 KiB (inkl. Chunked-Bodies im Backend).
 - **Härtung:** Backend und Frontend als Non-Root, `read_only` Root-FS mit tmpfs, `cap_drop: ALL`, `no-new-privileges`, konfigurierbare Speicher-/CPU-/PID-Limits. PostgreSQL ohne pauschales `cap_drop ALL` (Init braucht Privilegien), mit `no-new-privileges` und Limits.
 - **Dokumentation:** [`deployment.md`](deployment.md), VHost-Beispiel unter `deploy/nginx/`.
+
+### Iteration 10.5 – Betriebssicherheit
+
+- **Backup:** `scripts/backup-postgres.sh` – `pg_dump -Fc` im laufenden Postgres-Container, Zeitstempel-Dateiname, konfigurierbares Host-Verzeichnis, `chmod 600`/`700`, Lock gegen Parallelität, Verify per `pg_restore --list`, Retention (Standard 30 Tage) erst nach Erfolg. systemd-Timer-Vorlage unter `deploy/systemd/`.
+- **Restore:** `scripts/restore-postgres.sh` – explizite Datei + `CONFIRM=YES`, Archivprüfung, Sicherheitsbackup, Stop von Backend/Frontend, `pg_restore --clean --if-exists --exit-on-error`, Invalidierung von Remember-me und defensives Leeren von Setup-Tokens nach abgeschlossener Einrichtung, kontrollierter Wiederanlauf. Flyway-Historie kommt mit dem Dump.
+- **CI:** `scripts/ci-backup-restore.sh`; Workflow `security.yml` (Trivy FS/Images, npm audit production). Ausnahmen nur in [`security-exceptions.md`](security-exceptions.md).
+- **Review / Freigabe:** [`security-review-10.5.md`](security-review-10.5.md), [`go-live-checklist.md`](go-live-checklist.md). Technische Deployment-Bereitschaft ≠ Betriebsfreigabe.

@@ -1,0 +1,13 @@
+[Unit]
+Description=Tägliches PostgreSQL-Backup für Was essen wir
+Documentation=file:///opt/was-essen-wir/docs/deployment.md
+
+[Timer]
+# Täglich gegen 03:15 Ortszeit des Hosts; leichte Verzögerung bei verpasstem Lauf.
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+RandomizedDelaySec=10m
+Unit=was-essen-wir-backup.service
+
+[Install]
+WantedBy=timers.target

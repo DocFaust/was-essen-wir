@@ -1,0 +1,175 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Wöchentlich Montag 05:15 UTC
+    - cron: "15 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Strategie für CI-Fehler bei Sicherheitsbefunden:
+# - CRITICAL/HIGH in produktiv genutzten Laufzeit-Images und Produktionsabhängigkeiten → Job fehlgeschlagen
+# - Reine Dev-/Test-Abhängigkeiten: gesonderter Scan mit continue-on-error, Ergebnis als Artifact
+# - Befunde ohne verfügbare Fehlerbehebung: nicht pauschal ignorieren; Ausnahme nur mit
+#   dokumentierter Begründung und Wiedervorlagedatum in docs/security-exceptions.md
+# - Keine ungeprüften Dependency-Upgrades; Dependabot-PRs bleiben der reguläre Weg
+
+jobs:
+  deps-fs:
+    name: Abhängigkeiten (Trivy FS)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Quellcode holen
+        uses: actions/checkout@v7.0.1
+
+      - name: Trivy – Produktionsabhängigkeiten (CRITICAL/HIGH)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          # Nur Befunde mit verfügbarer Fehlerbehebung brechen die CI ab.
+          ignore-unfixed: true
+          format: table
+          output: trivy-fs-prod.txt
+          scanners: vuln
+          trivyignores: .trivyignore
+
+      - name: Trivy-FS-Report hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: trivy-fs-prod
+          path: trivy-fs-prod.txt
+          if-no-files-found: ignore
+
+  images:
+    name: Container-Images (Trivy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Quellcode holen
+        uses: actions/checkout@v7.0.1
+
+      - name: Backend-Image bauen
+        run: docker build -t waew-backend:ci ./backend
+
+      - name: Frontend-Image bauen
+        run: docker build -t waew-frontend:ci ./frontend
+
+      - name: PostgreSQL-Image ziehen
+        run: docker pull postgres:17-alpine
+
+      - name: Trivy – Backend-Image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: waew-backend:ci
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+          format: table
+          output: trivy-backend.txt
+          scanners: vuln
+          trivyignores: .trivyignore
+
+      - name: Trivy – Frontend-Image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: waew-frontend:ci
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+          format: table
+          output: trivy-frontend.txt
+          scanners: vuln
+          trivyignores: .trivyignore
+
+      - name: Trivy – PostgreSQL-Image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: postgres:17-alpine
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+          format: table
+          output: trivy-postgres.txt
+          scanners: vuln
+          trivyignores: .trivyignore
+
+      - name: Image-Reports hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: trivy-images
+          path: |
+            trivy-backend.txt
+            trivy-frontend.txt
+            trivy-postgres.txt
+          if-no-files-found: ignore
+
+  npm-prod:
+    name: npm Produktionsabhängigkeiten
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Quellcode holen
+        uses: actions/checkout@v7.0.1
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: npm ci
+        working-directory: frontend
+        run: npm ci
+
+      - name: npm audit (production, high+)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  gradle-deps:
+    name: Gradle Abhängigkeiten (Trivy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Quellcode holen
+        uses: actions/checkout@v7.0.1
+
+      - name: Trivy – Backend-Verzeichnis
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: backend
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+          format: table
+          output: trivy-gradle.txt
+          scanners: vuln
+          trivyignores: .trivyignore
+
+      - name: Gradle-Report hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: trivy-gradle
+          path: trivy-gradle.txt
+          if-no-files-found: ignore
