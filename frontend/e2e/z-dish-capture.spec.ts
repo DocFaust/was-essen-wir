@@ -17,7 +17,9 @@ test('erfasst ein Gericht über die KI und speichert erst nach Prüfung', async 
   await page.getByTestId('draft-submit').click();
 
   await expect(page.getByTestId('dish-name')).toHaveValue('Kartoffelgratin');
-  await expect(page.getByTestId('draft-summary')).toContainText('Meal Prep');
+  await expect(page.getByTestId('draft-summary')).toContainText(
+    'Die KI hat einen Gerichtsentwurf erstellt. Bitte prüfe die Angaben vor dem Speichern.',
+  );
   await expect(pressed(page, 'Aufwand')).toHaveText('Mittel');
   await expect(pressed(page, 'Meal Prep')).toHaveText('Geeignet');
   await page.getByTestId('dish-name').fill(name);

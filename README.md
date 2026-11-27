@@ -187,7 +187,7 @@ npm run lint
 
 ## E2E-Tests
 
-Playwright prüft Chromium in einem mobilen Viewport gegen eine isolierte Compose-Umgebung. Projektname, Volume und Port (`18080`) sind vom Entwicklungstack getrennt. Das Datenbankpasswort erzeugt das Startskript zur Laufzeit.
+Playwright prüft Chromium in einem mobilen Viewport gegen eine isolierte Compose-Umgebung. Projektname, Volume und Port (`18080`) sind vom Entwicklungstack getrennt. Das Datenbankpasswort erzeugt das Startskript zur Laufzeit. Dieselbe Benutzerin stellt in einem Lauf fünf KI-Anfragen; die CI wiederholt einen fehlgeschlagenen Test einmal. Das Startskript setzt deshalb nur für diesen Stack `AI_RATE_LIMIT_PER_USER_PER_MINUTE=20`. Die produktiven Standardwerte bleiben unverändert.
 
 ```sh
 cd frontend

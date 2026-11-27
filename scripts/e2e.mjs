@@ -16,6 +16,9 @@ const env = {
   AI_ENABLED: 'true',
   AI_PROVIDER: 'fixture',
   AI_ALLOW_FIXTURE: 'true',
+  // Fünf KI-Aufrufe als dieselbe Benutzerin, in der CI mit einem Retry bis zu zehn,
+  // liegen innerhalb einer Minute. Nur dieser Stack hebt das Minutenlimit an.
+  AI_RATE_LIMIT_PER_USER_PER_MINUTE: '20',
 };
 
 const compose = ['compose', '--project-name', project, '-f', 'compose.yaml'];
