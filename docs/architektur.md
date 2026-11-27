@@ -62,7 +62,7 @@ Die Oberfläche priorisiert die täglichen Aufgaben, ohne neue Fachendpunkte. Di
 
 ## Iteration 9
 
-`POST /api/ai/dish-drafts` übersetzt eine Beschreibung in einen versionierten Entwurf für ein Grundgericht oder eine Variante. Der Endpunkt liest nur und schreibt nicht. Ollama erhält dasselbe JSON-Schema als `format`, OpenAI als Structured Output `dish_draft`. Das Backend verwirft Angaben, die der Text nicht stützt, und ergänzt ausdrückliche Angaben, die das Modell auslässt. `null` bleibt unbekannt beziehungsweise bei einer Variante geerbt. Ein ähnlicher Name wird lokal angezeigt und sperrt das Speichern nicht. Die vorhandenen CRUD-Endpunkte legen das Gericht erst nach der Bestätigung im Formular an.
+`POST /api/ai/dish-drafts` übersetzt eine Beschreibung in einen versionierten Entwurf für ein Grundgericht oder eine Variante. Der Endpunkt liest nur und schreibt nicht. Ollama erhält dasselbe JSON-Schema als `format`, OpenAI als Structured Output `dish_draft`. Seit Iteration 10.6 darf das Modell die erlaubten Felder eines bekannten Gerichts ergänzen. Ausdrückliche Angaben der Person haben Vorrang. `null` bleibt bei einer Variante geerbt, wenn die Eigenschaft nicht geändert wird. Ein ähnlicher Name wird lokal angezeigt und sperrt das Speichern nicht. Die vorhandenen CRUD-Endpunkte legen das Gericht erst nach der Bestätigung im Formular an.
 
 ## Iteration 10
 
@@ -98,3 +98,10 @@ Public Deployment Hardening. Die Architekturentscheidungen für Heimnetz und öf
 - **Restore:** `scripts/restore-postgres.sh` – explizite Datei + `CONFIRM=YES`, Archivprüfung, Sicherheitsbackup, Stop von Backend/Frontend, `pg_restore --clean --if-exists --exit-on-error`, Invalidierung von Remember-me und defensives Leeren von Setup-Tokens nach abgeschlossener Einrichtung, kontrollierter Wiederanlauf. Flyway-Historie kommt mit dem Dump.
 - **CI:** `scripts/ci-backup-restore.sh`; Workflow `security.yml` (Trivy FS/Images, npm audit production). Ausnahmen nur in [`security-exceptions.md`](security-exceptions.md).
 - **Review / Freigabe:** [`security-review-10.5.md`](security-review-10.5.md), [`go-live-checklist.md`](go-live-checklist.md). Technische Deployment-Bereitschaft ≠ Betriebsfreigabe.
+
+### Iteration 10.6 – Praxistauglichkeit des KI-Assistenten
+
+- **Entwurf:** `DishDraftPrompt` fordert einen möglichst vollständigen Entwurf. Erlaubt sind Name, Beschreibung, Mahlzeiten, Kategorien, Aufwand, typische Zutaten ohne Mengen, kurze Zubereitung, Meal Prep und Homeoffice. Ein bekannter Name genügt. Bei Unsicherheit bleibt der Entwurf leer (`warnings` enthält `unbekannt`), ohne erfundenes Rezept.
+- **Vorrang:** `DishDraftValidator` übernimmt ausdrückliche Angaben aus dem Text vor den Modellwerten. Ausgeschlossene und ersetzte Zutaten werden nicht wieder ergänzt. Varianten lassen nicht genannte Eigenschaften leer, damit die bestehende Vererbung gilt. Mahlzeiten und Kategorien bleiben am Grundgericht.
+- **Grenzen:** JSON-Schema, Längen, Enums, keine Modell-IDs, keine erfundenen URLs, keine persönlichen Kommentare und keine externen Rezeptquellen. Eine ergänzte Zubereitung darf die Quelle `KI-generiert` tragen. Kein zweiter Modellaufruf, keine Speicherung durch die KI, Rate-Limits unverändert.
+- **Fehler:** `ProviderHttp` unterscheidet Quota (`insufficient_quota`, `credit_balance_exhausted`), ungültigen Zugang, Anbieter-Rate-Limit, Timeout, Netzwerk, ungültige Modellantwort und sonstige HTTP-Fehler. Die Oberfläche nennt bei Quota und Zugang eine administrierende Person. Schlüssel, Antwortkörper und interne Providerdetails erscheinen weder in der Meldung noch im Protokoll. Details in [`ki-assistent.md`](ki-assistent.md).

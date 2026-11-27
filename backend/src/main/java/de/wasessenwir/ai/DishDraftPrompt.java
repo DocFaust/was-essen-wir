@@ -11,28 +11,36 @@ final class DishDraftPrompt {
                 Art: VARIANT
                 Grundgericht: %s
                 Zutaten des Grundgerichts: %s
-                Überschreibe nur, was die Beschreibung ausdrücklich sagt. Nicht genannte Eigenschaften bleiben null.
+                Berücksichtige dieses Grundgericht. Schlage nur sinnvolle Änderungen vor.
+                Nicht genannte Eigenschaften bleiben null, damit sie vererbt werden.
                 Mahlzeiten und Kategorien gehören zum Grundgericht und bleiben leer.
-                Bei einer Ersetzung steht die neue Zutat in ingredients und die ersetzte in removedIngredients.
-                Erfinde keine vollständige Zutatenliste und keine Grundgericht-ID.
+                Neue Zutaten stehen in ingredients. Ersetzte oder ausgeschlossene Zutaten stehen nur in removedIngredients und nicht wieder in ingredients.
+                Erfinde keine Grundgericht-ID.
                 """.formatted(
                         baseDishName,
                         baseIngredients.isEmpty() ? "keine gespeicherten Zutaten" : String.join(", ", baseIngredients))
-                : "Art: DISH\n";
+                : """
+                Art: DISH
+                Erzeuge einen möglichst vollständigen Entwurf. Der Name eines bekannten Gerichts genügt.
+                Ergänze Beschreibung, passende Mahlzeiten, Kategorien, Aufwand, typische Zutaten ohne Mengen, eine kurze Zubereitung, Meal Prep und Homeoffice, wenn du das Gericht sicher kennst.
+                """;
         return context + """
-                Du erzeugst einen Gerichteentwurf als JSON mit schemaVersion 1. Antworte nur mit diesem Objekt.
-                Übernimm nur, was im Text steht oder sich sicher daraus ergibt. Unbekannt ist null, nicht false.
-                false nur bei ausdrücklicher Verneinung.
-                Erfinde aus dem Namen nichts: keine Zutaten, keine Allergene, keine Dauer, keine Meal-Prep- oder Homeoffice-Eignung, keinen Aufwand.
-                mealTypes nur wenn genannt: FRUEHSTUECK, MITTAGESSEN, ABENDESSEN, SNACK.
+                Du erzeugst JSON mit schemaVersion 1. Antworte nur mit diesem Objekt.
+                Ausdrückliche Angaben der Person haben Vorrang. Widersprich ihnen nicht.
+                false nur bei ausdrücklicher Verneinung. Unbekannt ist null, nicht false.
+                mealTypes nur FRUEHSTUECK, MITTAGESSEN, ABENDESSEN, SNACK.
                 effort: EINFACH bis einschließlich 30 Minuten oder bei einfach, schnell, unkompliziert oder wenig Aufwand.
                 MITTEL über 30 bis einschließlich 75 Minuten oder bei mittel oder mittelschwer.
-                AUFWENDIG über 75 Minuten oder bei aufwendig. Sonst null.
-                mealPrep true bei Vorkochen, Vorbereiten oder Meal Prep, false bei Verneinung, sonst null.
-                Aufwärmen ist kein Meal Prep. Erwähne es höchstens in comments.
-                homeOffice true nur bei Homeoffice, false bei Verneinung, sonst null.
-                ingredients nur wörtlich genannte Zutaten, keine abgeleitete Liste.
-                Keine IDs, keine Werkzeuge, keine URLs außer der Text nennt selbst eine http- oder https-Adresse.
+                AUFWENDIG über 75 Minuten oder bei aufwendig. Sonst null, wenn du es nicht sicher kennst.
+                mealPrep true bei typischem Vorkochen oder Meal Prep, false nur bei Verneinung.
+                Aufwärmen ist kein Meal Prep.
+                homeOffice true, wenn das Gericht dazu passt oder die Person das sagt, false nur bei Verneinung.
+                Zutaten ohne Mengenangaben.
+                Keine persönlichen Vorlieben, Familiengewohnheiten oder persönlichen Kommentare. comments bleibt null, außer die Person nennt selbst einen Kommentar.
+                Keine Rezeptlinks und keine externen Rezeptquellen. recipeUrl bleibt null, außer die Person nennt selbst eine http- oder https-Adresse.
+                Wenn du eine Zubereitung ergänzt, setze recipeSource auf "KI-generiert".
+                Wenn du das Gericht nicht sicher kennst, lasse die ergänzten Felder null und setze warnings auf ["unbekannt"]. Erfinde dann kein Rezept.
+                Keine IDs und keine Werkzeuge.
                 """;
     }
 }

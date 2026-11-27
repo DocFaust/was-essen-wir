@@ -92,6 +92,49 @@ class AiProviderHttpTest {
     }
 
     @Test
+    void openAiClassifiesQuotaAuthRateLimitAndOtherProviderErrors() throws Exception {
+        start("/v1/chat/completions", 429, "{\"error\":{\"code\":\"insufficient_quota\",\"message\":\"billing detail\"}}");
+        assertKind(AiProviderException.Kind.QUOTA, "billing detail");
+
+        stop();
+        requests.clear();
+        start("/v1/chat/completions", 429, "{\"error\":{\"type\":\"credit_balance_exhausted\",\"message\":\"balance\"}}");
+        assertKind(AiProviderException.Kind.QUOTA, "balance");
+
+        stop();
+        requests.clear();
+        start("/v1/chat/completions", 401, "{\"error\":{\"code\":\"invalid_api_key\",\"message\":\"sk-live-secret\"}}");
+        assertKind(AiProviderException.Kind.UNAUTHORIZED, "sk-live-secret");
+
+        stop();
+        requests.clear();
+        start("/v1/chat/completions", 429, "{\"error\":{\"code\":\"rate_limit_exceeded\"}}");
+        assertKind(AiProviderException.Kind.RATE_LIMITED, "rate_limit_exceeded");
+
+        stop();
+        requests.clear();
+        start("/v1/chat/completions", 500, "{\"error\":{\"message\":\"internal\"}}");
+        assertKind(AiProviderException.Kind.PROVIDER, "internal");
+
+        assertThatThrownBy(() -> new OpenAiAiProvider(openAi("http://127.0.0.1:9", " ", "gpt-test"), 128, mapper)
+                        .draft("System", "Suppe"))
+                .isInstanceOf(AiProviderException.class)
+                .extracting(exception -> ((AiProviderException) exception).kind())
+                .isEqualTo(AiProviderException.Kind.UNAUTHORIZED);
+    }
+
+    private void assertKind(AiProviderException.Kind kind, String secret) {
+        assertThatThrownBy(() -> new OpenAiAiProvider(openAi(url(), "sk-test-not-a-secret", "gpt-test"), 128, mapper)
+                        .draft("System", "Suppe"))
+                .isInstanceOf(AiProviderException.class)
+                .satisfies(exception -> {
+                    AiProviderException providerException = (AiProviderException) exception;
+                    assertThat(providerException.kind()).isEqualTo(kind);
+                    assertThat(providerException.getMessage()).doesNotContain(secret).doesNotContain("sk-test");
+                });
+    }
+
+    @Test
     void fixtureTranslatesTheEveningExampleWithoutNetwork() {
         String json = new FixtureAiProvider(java.time.Clock.systemUTC(), mapper)
                 .interpret("System", "Heute Abend etwas Schnelles");

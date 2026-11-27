@@ -16,5 +16,8 @@ test('unterscheidet Tageslimit und vorübergehende Auslastung', () => {
   expect(canRetryAiError(daily)).toBe(false);
   expect(canRetryAiError(minute)).toBe(true);
   expect(canRetryAiError(busy)).toBe(true);
+  expect(canRetryAiError(new ApiError('Das Guthaben ist aufgebraucht.', 503, 'AI_QUOTA'))).toBe(false);
+  expect(canRetryAiError(new ApiError('Der Zugang ist ungültig.', 503, 'AI_PROVIDER_AUTH'))).toBe(false);
+  expect(canRetryAiError(new ApiError('Der Anbieter begrenzt.', 429, 'AI_PROVIDER_RATE_LIMIT'))).toBe(true);
   expect(aiErrorMessage(daily, 'Fallback')).toBe('Das Tageslimit ist erreicht.');
 });

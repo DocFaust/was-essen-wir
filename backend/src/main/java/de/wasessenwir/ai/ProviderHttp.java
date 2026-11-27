@@ -58,7 +58,7 @@ final class ProviderHttp {
                     throw AiProviderException.invalid();
                 }
                 if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                    throw AiProviderException.unreachable();
+                    throw AiProviderException.forStatus(response.statusCode(), new String(bytes, StandardCharsets.UTF_8));
                 }
                 return new String(bytes, StandardCharsets.UTF_8);
             }

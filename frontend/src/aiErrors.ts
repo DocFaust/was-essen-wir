@@ -23,5 +23,8 @@ export function aiErrorMessage(error: unknown, fallback: string): string {
 }
 
 export function canRetryAiError(error: unknown): boolean {
+  if (error instanceof ApiError && (error.code === 'AI_QUOTA' || error.code === 'AI_PROVIDER_AUTH')) {
+    return false;
+  }
   return aiLimitKind(error) !== 'daily';
 }

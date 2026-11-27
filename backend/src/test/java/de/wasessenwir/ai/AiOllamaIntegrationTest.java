@@ -339,8 +339,8 @@ class AiOllamaIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getHeaders().getCacheControl()).contains("no-store");
-        assertThat(response.getBody()).contains("Kartoffelgratin").doesNotContain("Trüffel").doesNotContain("ABENDESSEN");
-        assertThat(response.getBody()).contains("\"mealPrep\":null");
+        assertThat(response.getBody()).contains("Kartoffelgratin").contains("Trüffel").contains("ABENDESSEN");
+        assertThat(response.getBody()).contains("\"mealPrep\":true");
         String outbound = REQUESTS.getLast();
         assertThat(outbound).contains("schemaVersion").contains("Wir machen manchmal Kartoffelgratin.");
         assertThat(outbound).doesNotContain("\"format\":\"json\"");
@@ -396,8 +396,32 @@ class AiOllamaIntegrationTest {
                 "/api/ai/dish-drafts",
                 new DishDraftRequest("Wir machen manchmal Suppe.", DraftKind.DISH, null),
                 String.class);
-        assertThat(down.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-        assertThat(down.getBody()).contains("AI_UNAVAILABLE");
+        assertThat(down.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(down.getBody()).contains("AI_PROVIDER_ERROR").doesNotContain("AI_UNAVAILABLE");
+
+        behavior = exchange -> write(exchange, 429, "{\"error\":{\"code\":\"insufficient_quota\",\"message\":\"billing detail\"}}");
+        ResponseEntity<String> quota = restTemplate.postForEntity(
+                "/api/ai/dish-drafts",
+                new DishDraftRequest("Wir machen manchmal Suppe.", DraftKind.DISH, null),
+                String.class);
+        assertThat(quota.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(quota.getBody()).contains("AI_QUOTA").contains("Guthaben").doesNotContain("AI_UNAVAILABLE");
+        assertThat(quota.getBody()).doesNotContain("insufficient_quota").doesNotContain("billing detail");
+
+        behavior = exchange -> write(exchange, 401, "{\"error\":{\"message\":\"sk-should-not-leak\"}}");
+        ResponseEntity<String> unauthorized = restTemplate.postForEntity(
+                "/api/ai/dish-drafts",
+                new DishDraftRequest("Wir machen manchmal Suppe.", DraftKind.DISH, null),
+                String.class);
+        assertThat(unauthorized.getBody()).contains("AI_PROVIDER_AUTH").doesNotContain("sk-should-not-leak");
+
+        behavior = exchange -> write(exchange, 429, "{\"error\":{\"code\":\"rate_limit_exceeded\"}}");
+        ResponseEntity<String> limited = restTemplate.postForEntity(
+                "/api/ai/dish-drafts",
+                new DishDraftRequest("Wir machen manchmal Suppe.", DraftKind.DISH, null),
+                String.class);
+        assertThat(limited.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(limited.getBody()).contains("AI_PROVIDER_RATE_LIMIT").doesNotContain("rate_limit_exceeded");
         assertThat(count("dish")).isZero();
     }
 

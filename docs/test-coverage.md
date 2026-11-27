@@ -96,7 +96,7 @@ Nicht ausgeschlossen sind Einstieg (`main.tsx`), Theme, Seiten, Formulare, API-M
 
 ## Bekannte Testlücken
 
-Die genannten Verhaltensweisen sind bereits durch Unit- oder Integrationstests abgedeckt: Ablehnung und Gewichtung der Empfehlung, Wiederholungsvermeidung, CSRF und anonyme Aufrufe, KI-Validierung inklusive verworfener unbelegter Angaben, Variantenvererbung, Speichern und Abbrechen in der Erfassung sowie Fehlerantworten. Dafür sind keine zusätzlichen Tests entstanden.
+Die genannten Verhaltensweisen sind bereits durch Unit- oder Integrationstests abgedeckt: Ablehnung und Gewichtung der Empfehlung, Wiederholungsvermeidung, CSRF und anonyme Aufrufe, KI-Validierung inklusive ergänzter Entwürfe und getrennter Providerfehler, Variantenvererbung, Speichern und Abbrechen in der Erfassung sowie Fehlerantworten. Dafür sind keine zusätzlichen Tests entstanden.
 
 Offen bleibt:
 

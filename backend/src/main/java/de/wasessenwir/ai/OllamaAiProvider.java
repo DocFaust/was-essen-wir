@@ -35,7 +35,7 @@ final class OllamaAiProvider implements AiProvider {
 
     private String chat(String systemPrompt, String userMessage, JsonNode schema) {
         if (properties.model() == null || properties.model().isBlank()) {
-            throw AiProviderException.unreachable();
+            throw AiProviderException.provider();
         }
         ObjectNode body = mapper.createObjectNode();
         body.put("model", properties.model().trim());
