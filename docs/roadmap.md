@@ -45,6 +45,12 @@ Jede Iteration ist für sich testbar. Fachliche Anforderungen stehen in [`fachko
     - Erweiterte Betriebsdokumentation, Sicherheitsreview und Go-Live-Checkliste.
     - Technische Deployment-Bereitschaft im Repository; Betriebsfreigabe erst nach Prüfung auf dem Zielserver.
 
+    10.6 – Praxistauglichkeit des KI-Assistenten – abgeschlossen.
+    - Ein bekannter Gerichtsname reicht für einen prüfbaren Entwurf. Die KI darf Beschreibung, Mahlzeiten, Kategorien, Aufwand, typische Zutaten ohne Mengen, eine kurze Zubereitung, Meal Prep und Homeoffice ergänzen.
+    - Ausdrückliche Angaben haben Vorrang. Ausgeschlossene oder ersetzte Zutaten kommen nicht zurück. Rezeptlinks, externe Quellen und persönliche Kommentare werden nicht erfunden. Unbekannte Gerichte bleiben ohne erfundenes Rezept.
+    - Providerfehler unterscheiden Guthaben, Zugang, Anbieter-Rate-Limit, Netzwerk, Timeout, ungültige Antwort und sonstige Fehler. Interne Nutzungslimits bleiben getrennt.
+    - Gespeichert wird weiterhin erst im Formular. Keine neue Migration, kein zweiter KI-Aufruf, keine Deployment-Änderung.
+
 11. **Familienabstimmung und Lernen.** Optionale Abstimmungen und schwache lernende Signale.
 
 Allergien, Abstimmungsfristen und Aufbewahrung bleiben offene Punkte im Fachkonzept, bis die jeweilige Iteration sie festlegt. Die Gewichte der regelbasierten Vorschläge stehen in [`empfehlungslogik.md`](empfehlungslogik.md).

@@ -92,6 +92,15 @@ final class DraftText {
         return trimmed;
     }
 
+    static boolean sameIngredient(String stored, String mentioned) {
+        String left = fold(stored);
+        String right = fold(mentioned);
+        if (left.equals(right)) {
+            return true;
+        }
+        return (right.length() >= 5 && left.contains(right)) || (left.length() >= 5 && right.contains(left));
+    }
+
     static String label(String key) {
         return switch (key) {
             case "name" -> "Name";

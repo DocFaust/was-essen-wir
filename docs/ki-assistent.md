@@ -216,9 +216,13 @@ Die Antwort enthält `reply`, `clarificationQuestion`, `criteria`, `suggestions`
 | leere oder zu lange Eingabe | `400` |
 | Minutenlimit oder vorübergehende Auslastung | `429`, `AI_RATE_LIMITED` oder `AI_BUSY`, optional `Retry-After` |
 | Tageslimit (Benutzer oder global) | `429`, `AI_DAILY_LIMIT`, optional `Retry-After` |
-| Provider nicht erreichbar oder nicht konfiguriert | `503`, `AI_UNAVAILABLE` |
+| Netzwerk, Verbindung oder leere Adresse | `503`, `AI_UNAVAILABLE` |
 | Zeitüberschreitung | `504`, `AI_TIMEOUT` |
 | ungültige Modellausgabe | `502`, `AI_INVALID` |
+| kein API-Guthaben (`insufficient_quota`, `credit_balance_exhausted`) | `503`, `AI_QUOTA` |
+| ungültiger Schlüssel oder fehlende Berechtigung | `503`, `AI_PROVIDER_AUTH` |
+| Rate-Limit des Anbieters | `429`, `AI_PROVIDER_RATE_LIMIT` |
+| sonstiger Fehler des Anbieters | `502`, `AI_PROVIDER_ERROR` |
 | Rückfrage oder keine passenden Gerichte | `200` mit leeren Vorschlägen |
 
 Es gibt keine automatischen Wiederholungen. Ein Fehler ändert keine Gerichte, Planungen, Historieneinträge oder Bewertungen.
@@ -246,7 +250,7 @@ Technische Fehler nennen keine Adressen, Schlüssel oder Stacktraces. Bei vorüb
 ## Grenzen der ersten Version
 
 - Kein Chatverlauf und kein Lernen aus Gesprächen.
-- Keine automatische Planung, keine Rezepte, keine Bilder, keine Spracheingabe. Ein Gericht oder eine Variante entsteht nur, wenn die Person den Entwurf im Formular speichert.
+- Keine automatische Planung, keine Bilder, keine Spracheingabe. Die Vorschläge enthalten keine Rezepte. Ein Gericht oder eine Variante entsteht nur, wenn die Person den Entwurf im Formular speichert.
 - Keine eigenen KI-Bewertungen und keine Sicht auf fremde Sterne.
 - Katalogwünsche funktionieren nur, wenn Name, Variante, Kategorie oder Zutat den Begriff enthalten.
 - Ein Ausschluss trifft die ganze Gerichtsfamilie, auch wenn nur eine Variante gemeint war.
@@ -255,6 +259,8 @@ Technische Fehler nennen keine Adressen, Schlüssel oder Stacktraces. Bei vorüb
 ## Gerichteentwurf
 
 `POST /api/ai/dish-drafts` verlangt eine Sitzung und CSRF. Der Endpunkt erzeugt nur einen Entwurf. Er schreibt nicht in die Datenbank. Angelegt wird ein Gericht oder eine Variante erst über die vorhandenen Endpunkte, wenn die Person im Formular auf Speichern tippt. Abbrechen legt nichts an.
+
+Die Schaltfläche heißt „Mit KI erstellen“. Ein Name oder eine Beschreibung genügt. Nach dem Entwurf füllt die Oberfläche das vorhandene Formular und bittet, die Angaben vor dem Speichern zu prüfen. Duplikate und eine unklare Grundgericht-Auswahl bleiben eigene Hinweise. Alle Felder sind vor dem Speichern bearbeitbar.
 
 Die Anfrage enthält die Beschreibung, die Art `DISH` oder `VARIANT` und bei einer Variante die ID des Grundgerichts. Die Beschreibung ist auf die bestehende Eingabelänge begrenzt, höchstens 2000 Zeichen. Eine unbekannte oder fremde Grundgericht-ID wird abgelehnt. Mehrere namensähnliche Grundgerichte werden als Auswahl zurückgegeben, ohne den Provider aufzurufen. Die Oberfläche startet die Variante bevorzugt aus den Details eines Gerichts.
 
@@ -272,26 +278,29 @@ Ollama erhält das Schema als `format`-Objekt, OpenAI als Structured Output mit 
 
 Die Antwort an den Browser mappt das auf die vorhandenen DTOs. `removedIngredients` bleibt intern und wird für eine Variante mit den Zutaten des Grundgerichts verrechnet. `ingredientsSpecified` ist bei einem Grundgericht `null` und bei einer Variante nur dann `true`, wenn der Text Zutaten nennt. `null` bei Aufwand, Meal Prep und Homeoffice einer Variante bedeutet weiter Vererbung, nicht „nicht geprüft“.
 
-### Erkannt, abgeleitet, unbekannt
+### Ergänzt, ausdrücklich, unbekannt
 
-Das Modell darf nur belegen, was im Text steht. Das Backend prüft die Modellausgabe gegen eine lokale Lesart derselben Beschreibung. Eine Angabe ohne Beleg entfällt, eine ausdrückliche Angabe, die das Modell auslässt, wird ergänzt. `false` gilt nur bei Verneinung. `null` bleibt unbekannt.
+Das Modell erstellt einen Entwurf. Ein bekannter Gerichtsname genügt. Es darf Beschreibung, Mahlzeiten, Kategorien, Aufwand, typische Zutaten ohne Mengen, eine kurze Zubereitung, Meal Prep und Homeoffice ergänzen. Ausdrückliche Angaben im Text haben Vorrang, auch wenn das Modell etwas anderes liefert. `false` gilt bei ausdrücklicher Verneinung. Kennt das Modell das Gericht nicht sicher, lässt es die ergänzten Felder leer und setzt `warnings` auf `unbekannt`. Das Backend übernimmt dann kein Rezept und keine erfundenen Zutaten.
+
+Nicht ergänzt werden persönliche Kommentare, Familiengewohnheiten, Rezeptlinks und externe Rezeptquellen. Übernimmt der Entwurf eine Zubereitung und nennt die Person keine Quelle, setzt das Backend `recipeSource` auf `KI-generiert`, auch wenn das Modell die Kennzeichnung weglässt. Eine Quelle aus dem Text bleibt erhalten und gewinnt. Nennt der Zubereitungstext eine ausdrücklich ausgeschlossene oder ersetzte Zutat, erscheint ein Prüfhinweis.
 
 | Text | Ergebnis |
 | --- | --- |
-| bis 30 Minuten, einfach, schnell, unkompliziert, wenig Aufwand | `EINFACH` |
+| bis 30 Minuten, einfach, schnell, unkompliziert, wenig Aufwand | `EINFACH`, auch gegen einen anderen Modellwert |
 | über 30 bis 75 Minuten, mittel, mittelschwer | `MITTEL` |
 | über 75 Minuten, aufwendig | `AUFWENDIG` |
 | „eine Stunde“, „halbe Stunde“, „anderthalb/eineinhalb Stunde“ | 60, 30, 90 Minuten, dann die Aufwandsklasse |
 | Aufwandswort und Dauer widersprechen sich | das Wort gewinnt, mit Hinweis |
-| Vorkochen, Vorbereiten, Meal Prep | Meal Prep `true`; Verneinung `false`; sonst `null` |
-| Homeoffice | analog `true`, `false` oder `null` |
+| Vorkochen, Vorbereiten, Meal Prep | Meal Prep `true`; Verneinung `false`; sonst der Modellvorschlag oder `null` |
+| Homeoffice | analog |
 | „lässt sich aufwärmen“ | Kommentar, kein eigenes Feld und kein Meal Prep |
-| ausdrücklich vegetarisch | Kategorie nur am Grundgericht |
+| ausdrücklich vegetarisch | Kategorie nur am Grundgericht; sonst dürfen Modellkategorien ergänzt werden |
+| „ohne Sellerie“, „mit X statt Y“ | die genannte Zutat fehlt im Entwurf, auch wenn das Modell sie ergänzt |
 | Mahlzeit an einer Variante | Hinweis, Mahlzeiten bleiben am Grundgericht |
 
-Aus dem bloßen Namen entstehen keine Zutaten, keine Allergene, keine Dauer, keine Eignung und kein Aufwand. Es gibt keine Minutenangabe in der Datenbank, deshalb wird eine genannte Dauer auf die vorhandene Aufwandsklasse abgebildet und im Formular als Hinweis gezeigt.
+Es gibt keine Minutenangabe in der Datenbank. Eine genannte Dauer wird auf die Aufwandsklasse abgebildet. Mengenangaben in Zutaten werden entfernt.
 
-Zutaten werden nur aus ausdrücklichen Mustern übernommen: „mit X statt Y“, „auch mit“, „Zutaten:“ und „aus A und B“. „mit Reis“ im Namen eines Gerichts ist keine Zutat. Eine Ersetzung übernimmt die übrige Liste des Grundgerichts nur, wenn die ersetzte Zutat darin vorkommt. Sonst stehen nur die neu genannten Zutaten im Formular, mit einem Hinweis zur Prüfung.
+Zutaten aus dem Text kommen aus „mit X statt Y“, „auch mit“, „mit zusätzlichen“, „Zutaten:“, „aus A und B“ und „ohne/kein“. „mit Reis“ im Namen eines Gerichts ist keine Zutat. Bei einem Grundgericht ohne solche Liste gelten die typischen Zutaten des Modells. Eine ausdrückliche Liste ersetzt sie. Bei einer Variante bleiben nicht genannte Eigenschaften leer und werden vererbt. Hinzugefügte Zutaten ergänzen die Liste des Grundgerichts. Nur „Zutaten:“ und „aus A und B“ ersetzen sie. Eine Ersetzung übernimmt die übrige Liste des Grundgerichts nur, wenn die ersetzte Zutat darin vorkommt. Sonst stehen die genannten und die zulässigen Ergänzungen im Formular, mit einem Hinweis zur Prüfung.
 
 ### Duplikate
 
@@ -307,9 +316,13 @@ Bei einem neuen Gericht gehen an den Provider nur die Beschreibung, die erlaubte
 | --- | --- |
 | KI deaktiviert | `404`, `AI_DISABLED`; die manuelle Erfassung bleibt, die KI-Option erscheint nicht |
 | Nutzungslimit | `429` wie bei den Vorschlägen; gemeinsames Kontingent |
-| Provider nicht erreichbar | `503`, `AI_UNAVAILABLE` |
+| Netzwerk oder Verbindung | `503`, `AI_UNAVAILABLE` |
 | Timeout | `504`, `AI_TIMEOUT` |
 | ungültiges JSON, Enum oder Schema | `502`, `AI_INVALID` |
+| kein API-Guthaben | `503`, `AI_QUOTA`; Hinweis an eine administrierende Person |
+| ungültiger Zugang | `503`, `AI_PROVIDER_AUTH`; Hinweis an eine administrierende Person |
+| Rate-Limit des Anbieters | `429`, `AI_PROVIDER_RATE_LIMIT` |
+| sonstiger Anbieterfehler | `502`, `AI_PROVIDER_ERROR` |
 | kein erkennbarer Name | `422`, `AI_UNINTERPRETABLE` |
 | Grundgericht fehlt | `404`, `BASE_DISH_NOT_FOUND` |
 | mehrere Grundgerichte | `200`, `outcome` `NEEDS_BASE_DISH` |
@@ -319,9 +332,9 @@ Bei einem KI-Fehler bleibt der Text stehen. Die Person kann es erneut versuchen 
 
 ### Grenzen der Erfassung
 
-- Keine Rezeptgenerierung, keine Internetsuche, keine Bilder, kein OCR, keine Spracheingabe, keine Nährwerte, keine Allergenerkennung.
+- Keine Internetsuche, keine Bilder, kein OCR, keine Spracheingabe, keine Nährwerte, keine Allergenerkennung. Eine kurze Zubereitung darf das Modell vorschlagen, wenn es das Gericht kennt. Der Entwurf wird nicht von selbst gespeichert.
 - Keine neue Provider, keine Embeddings, keine frei ausführbaren Werkzeuge.
 - Die Art kommt von der Oberfläche. Ein Variantenwunsch auf der Seite „Neues Gericht“ wird nicht still zu einer Variante umgedeutet.
-- Freie Formulierungen außerhalb der genannten Zutatenmuster werden nicht als Zutatenliste gelesen.
+- Typische Zutaten darf das Modell ergänzen. Ausdrückliche Listen und Ausschlüsse aus dem Text haben Vorrang. „mit Reis“ im Namen bleibt keine eigene Zutatenangabe.
 - „nicht nur zum Vorkochen“ kann als Verneinung gelesen werden.
 - Die Duplikatsuche ist eine Zeichen- und Wortähnlichkeit, keine Bedeutungssuche.

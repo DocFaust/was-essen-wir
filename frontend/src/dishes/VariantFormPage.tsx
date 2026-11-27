@@ -98,7 +98,6 @@ function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVarian
   const [aiEnabled, setAiEnabled] = useState(false);
   const [mode, setMode] = useState<'manual' | 'ai'>(!variant && params.get('erfassung') === 'ki' ? 'ai' : 'manual');
   const [draftMeta, setDraftMeta] = useState<DishDraft | null>(null);
-  const [edited, setEdited] = useState<string[]>([]);
 
   useEffect(() => {
     if (variant) {
@@ -128,9 +127,6 @@ function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVarian
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
-    if (draftMeta) {
-      setEdited((current) => (current.includes(key) ? current : [...current, key]));
-    }
   }
 
   function applyDraft(draft: DishDraft) {
@@ -147,7 +143,6 @@ function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVarian
       homeOffice: draft.homeOffice === true ? 'SUITABLE' : draft.homeOffice === false ? 'UNSUITABLE' : 'INHERIT',
     });
     setDraftMeta(draft);
-    setEdited([]);
     setDetailsOpen(true);
     setMode('manual');
     setMessage(null);
@@ -194,7 +189,7 @@ function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVarian
             Manuell erfassen
           </Button>
           <Button type="button" variant={mode === 'ai' ? 'contained' : 'outlined'} fullWidth onClick={() => setMode('ai')} data-testid="capture-ai">
-            Mit KI beschreiben
+            Mit KI erstellen
           </Button>
         </Stack>
       ) : null}
@@ -203,7 +198,7 @@ function VariantForm({ dish, variant }: { dish: DishDetail; variant?: DishVarian
       ) : null}
       {variant || mode === 'manual' ? (
         <>
-      {draftMeta ? <DraftSummary draft={draftMeta} edited={edited} /> : null}
+      {draftMeta ? <DraftSummary draft={draftMeta} /> : null}
       {message ? <ErrorState message={message} /> : null}
       <TextField
         label="Name"

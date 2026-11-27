@@ -63,7 +63,11 @@ export function CapturePanel({
         label={kind === 'VARIANT' ? 'Beschreibe die Variante' : 'Beschreibe dein Gericht'}
         value={description}
         onChange={(event) => setDescription(event.target.value)}
-        placeholder="Wir machen oft Kartoffelgratin. Dauert etwa eine Stunde und ist gut zum Vorbereiten."
+        placeholder={
+          kind === 'VARIANT'
+            ? 'Beschreibe die gewünschte Änderung. Die KI ergänzt die fehlenden Angaben.'
+            : 'Gib einen Gerichtsnamen ein oder beschreibe, wie ihr das Gericht zubereitet. Die KI ergänzt die fehlenden Angaben.'
+        }
         fullWidth
         multiline
         minRows={5}

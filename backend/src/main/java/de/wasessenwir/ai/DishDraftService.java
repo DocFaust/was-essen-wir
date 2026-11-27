@@ -7,8 +7,6 @@ import de.wasessenwir.web.ApiException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DishDraftService {
 
-    private static final Logger log = LoggerFactory.getLogger(DishDraftService.class);
     private static final int HARD_INPUT_LIMIT = 2_000;
     private static final List<String> DISH_FIELDS = List.of(
             "name", "description", "mealTypes", "categories", "effort", "ingredients",
@@ -69,7 +66,7 @@ public class DishDraftService {
                     description,
                     request.kind());
         } catch (AiProviderException exception) {
-            throw failure(exception);
+            throw AiFailures.toApi(exception);
         } catch (DishDraftRejectedException exception) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, exception.getMessage(), "AI_UNINTERPRETABLE");
         }
@@ -163,50 +160,54 @@ public class DishDraftService {
     }
 
     private static IngredientChoice ingredients(DraftKind kind, DishDraftFacts facts, List<String> baseIngredients) {
+        List<String> additions = withoutRemoved(facts.ingredients(), facts.removedIngredients());
         if (kind != DraftKind.VARIANT) {
-            return new IngredientChoice(facts.ingredients(), false, List.of());
+            return new IngredientChoice(additions, false, List.of());
         }
-        if (!facts.ingredientsMentioned()) {
-            return new IngredientChoice(List.of(), false, List.of());
-        }
-        if (facts.removedIngredients().isEmpty()) {
+        if (facts.exclusiveIngredients()) {
             return new IngredientChoice(
-                    facts.ingredients(),
+                    additions,
                     true,
                     List.of("Es wurden nur die genannten Zutaten übernommen. Bitte prüfe die Liste."));
         }
+        if (!facts.ingredientsMentioned() && additions.isEmpty() && facts.removedIngredients().isEmpty()) {
+            return new IngredientChoice(List.of(), false, List.of());
+        }
         boolean resolved = facts.removedIngredients().stream()
-                .allMatch(removed -> baseIngredients.stream().anyMatch(item -> sameIngredient(item, removed)));
-        if (!resolved) {
+                .allMatch(removed -> baseIngredients.stream().anyMatch(item -> DraftText.sameIngredient(item, removed)));
+        if (facts.ingredientsMentioned() && !facts.removedIngredients().isEmpty() && !resolved) {
             return new IngredientChoice(
-                    facts.ingredients(),
+                    additions,
                     true,
                     List.of("Die Ersetzung ließ sich nicht eindeutig auf die Zutaten des Grundgerichts anwenden. Bitte prüfe die Liste."));
         }
         List<String> merged = new ArrayList<>();
         for (String item : baseIngredients) {
-            if (facts.removedIngredients().stream().noneMatch(removed -> sameIngredient(item, removed))) {
+            if (facts.removedIngredients().stream().noneMatch(removed -> DraftText.sameIngredient(item, removed))) {
                 merged.add(item);
             }
         }
-        for (String item : facts.ingredients()) {
+        for (String item : additions) {
             if (merged.stream().noneMatch(existing -> DraftText.fold(existing).equals(DraftText.fold(item)))) {
                 merged.add(item);
             }
         }
-        return new IngredientChoice(
-                List.copyOf(merged),
-                true,
-                List.of("Bitte prüfe die Zutaten. Übernommen wurde die beschriebene Ersetzung."));
+        String warning = !facts.removedIngredients().isEmpty() && facts.ingredientsMentioned()
+                ? "Bitte prüfe die Zutaten. Übernommen wurde die beschriebene Ersetzung."
+                : facts.ingredientsMentioned()
+                        ? "Bitte prüfe die Zutaten. Die genannten Zutaten wurden zum Grundgericht ergänzt."
+                        : "Bitte prüfe die vorgeschlagenen Zutaten.";
+        return new IngredientChoice(List.copyOf(merged), true, List.of(warning));
     }
 
-    private static boolean sameIngredient(String stored, String mentioned) {
-        String left = DraftText.fold(stored);
-        String right = DraftText.fold(mentioned);
-        if (left.equals(right)) {
-            return true;
+    private static List<String> withoutRemoved(List<String> values, List<String> removed) {
+        List<String> kept = new ArrayList<>();
+        for (String value : values) {
+            if (removed.stream().noneMatch(item -> DraftText.sameIngredient(value, item))) {
+                kept.add(value);
+            }
         }
-        return right.length() >= 5 && left.contains(right) || left.length() >= 5 && right.contains(left);
+        return List.copyOf(kept);
     }
 
     private static List<String> recognized(DraftKind kind, DishDraftFacts facts, IngredientChoice ingredients) {
@@ -278,24 +279,6 @@ public class DishDraftService {
             throw new InvalidRequestException("Die Beschreibung enthält ungültige Zeichen.");
         }
         return description;
-    }
-
-    private ApiException failure(AiProviderException exception) {
-        log.warn("Gerichteentwurf fehlgeschlagen: {}", exception.kind());
-        return switch (exception.kind()) {
-            case TIMEOUT -> new ApiException(
-                    HttpStatus.GATEWAY_TIMEOUT,
-                    "Der Essensassistent hat zu lange gebraucht. Bitte versuche es erneut.",
-                    "AI_TIMEOUT");
-            case UNREACHABLE -> new ApiException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Der Essensassistent ist gerade nicht erreichbar.",
-                    "AI_UNAVAILABLE");
-            case INVALID -> new ApiException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Der Essensassistent konnte die Beschreibung nicht auswerten.",
-                    "AI_INVALID");
-        };
     }
 
     private record IngredientChoice(List<String> values, boolean specified, List<String> warnings) {

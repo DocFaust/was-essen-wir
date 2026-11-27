@@ -76,7 +76,7 @@ final class OpenAiAiProvider implements AiProvider {
 
     private String complete(String schemaName, JsonNode schema, String systemPrompt, String userMessage) {
         if (properties.apiKey() == null || properties.apiKey().isBlank() || properties.model() == null || properties.model().isBlank()) {
-            throw AiProviderException.unreachable();
+            throw AiProviderException.unauthorized();
         }
         ObjectNode body = mapper.createObjectNode();
         body.put("model", properties.model().trim());

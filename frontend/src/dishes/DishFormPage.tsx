@@ -95,7 +95,6 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
   const [aiEnabled, setAiEnabled] = useState(false);
   const [mode, setMode] = useState<'manual' | 'ai'>('manual');
   const [draftMeta, setDraftMeta] = useState<DishDraft | null>(null);
-  const [edited, setEdited] = useState<string[]>([]);
 
   useEffect(() => {
     if (dishId) {
@@ -120,9 +119,6 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
-    if (draftMeta) {
-      setEdited((current) => (current.includes(key) ? current : [...current, key]));
-    }
   }
 
   function applyDraft(draft: DishDraft) {
@@ -141,7 +137,6 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
       homeOffice: draft.homeOffice === true ? 'SUITABLE' : draft.homeOffice === false ? 'UNSUITABLE' : 'UNKNOWN',
     });
     setDraftMeta(draft);
-    setEdited([]);
     setDetailsOpen(true);
     setMode('manual');
     setMessage(null);
@@ -185,7 +180,7 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
             Manuell erfassen
           </Button>
           <Button type="button" variant={mode === 'ai' ? 'contained' : 'outlined'} fullWidth onClick={() => setMode('ai')} data-testid="capture-ai">
-            Mit KI beschreiben
+            Mit KI erstellen
           </Button>
         </Stack>
       ) : null}
@@ -194,7 +189,7 @@ function DishForm({ dishId, initial }: { dishId?: string; initial: DishDetail | 
       ) : null}
       {dishId || mode === 'manual' ? (
         <>
-      {draftMeta ? <DraftSummary draft={draftMeta} edited={edited} /> : null}
+      {draftMeta ? <DraftSummary draft={draftMeta} /> : null}
       {message ? <ErrorState message={message} /> : null}
       <TextField
         label="Name"

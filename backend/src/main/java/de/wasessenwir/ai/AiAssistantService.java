@@ -15,15 +15,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AiAssistantService {
 
-    private static final Logger log = LoggerFactory.getLogger(AiAssistantService.class);
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEEE, d. MMMM uuuu", Locale.GERMAN);
     private static final int HARD_INPUT_LIMIT = 2_000;
 
@@ -71,7 +68,7 @@ public class AiAssistantService {
         try {
             intent = validator.parse(interpret(currentUserId, message, today));
         } catch (AiProviderException exception) {
-            throw failure(exception);
+            throw AiFailures.toApi(exception);
         }
         MealType mealType = intent.mealType() == null ? MealType.ABENDESSEN : intent.mealType();
         LocalDate date = intent.date() == null ? today : intent.date();
@@ -132,26 +129,8 @@ public class AiAssistantService {
         try {
             return provider.interpret(userId, IntentPrompt.system(today), message);
         } catch (AiProviderException exception) {
-            throw failure(exception);
+            throw AiFailures.toApi(exception);
         }
-    }
-
-    private ApiException failure(AiProviderException exception) {
-        log.warn("KI-Anfrage fehlgeschlagen: {}", exception.kind());
-        return switch (exception.kind()) {
-            case TIMEOUT -> new ApiException(
-                    HttpStatus.GATEWAY_TIMEOUT,
-                    "Der Essensassistent hat zu lange gebraucht. Bitte versuche es erneut.",
-                    "AI_TIMEOUT");
-            case UNREACHABLE -> new ApiException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Der Essensassistent ist gerade nicht erreichbar.",
-                    "AI_UNAVAILABLE");
-            case INVALID -> new ApiException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Der Essensassistent konnte die Anfrage nicht auswerten.",
-                    "AI_INVALID");
-        };
     }
 
     private String message(AiRecommendationRequest request) {

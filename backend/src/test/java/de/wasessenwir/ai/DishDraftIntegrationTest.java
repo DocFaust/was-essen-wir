@@ -148,6 +148,20 @@ class DishDraftIntegrationTest {
     }
 
     @Test
+    void keepsBaseIngredientsWhenAVariantOnlyAddsSome() {
+        DishDetailResponse base = createDish(
+                "Spaghetti Bolognese", MealType.ABENDESSEN, Effort.MITTEL, Suitability.UNKNOWN, Suitability.UNKNOWN,
+                List.of("Spaghetti", "Hackfleisch", "Tomaten"));
+
+        DishDraftResponse added = draft("Mit zusätzlichen Champignons.", DraftKind.VARIANT, base.id());
+        DishDraftResponse replaced = draft("Zutaten: Champignons.", DraftKind.VARIANT, base.id());
+
+        assertThat(added.ingredientsSpecified()).isTrue();
+        assertThat(added.ingredients()).contains("Spaghetti", "Hackfleisch", "Tomaten", "Champignons");
+        assertThat(replaced.ingredients()).containsExactly("Champignons");
+    }
+
+    @Test
     void preparesAVariantWithoutOverridingInheritedProperties() {
         DishDetailResponse base = createDish(
                 "Lasagne", MealType.ABENDESSEN, Effort.MITTEL, Suitability.SUITABLE, Suitability.UNKNOWN,

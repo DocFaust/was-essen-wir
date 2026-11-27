@@ -2,12 +2,9 @@ import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import { Link as RouterLink } from 'react-router';
-import { DRAFT_FIELD_LABELS, type DishDraft } from './draft';
+import type { DishDraft } from './draft';
 
-export function DraftSummary({ draft, edited }: { draft: DishDraft; edited: string[] }) {
-  const recognized = draft.recognized.filter((field) => !edited.includes(field)).map(label);
-  const unknown = draft.unknown.filter((field) => !edited.includes(field)).map(label);
-  const changed = edited.map(label);
+export function DraftSummary({ draft }: { draft: DishDraft }) {
   return (
     <Stack spacing={1} data-testid="draft-summary">
       {draft.warnings.map((warning) => (
@@ -15,13 +12,7 @@ export function DraftSummary({ draft, edited }: { draft: DishDraft; edited: stri
           {warning}
         </Alert>
       ))}
-      <Alert severity="success">
-        <Stack spacing={0.5}>
-          {recognized.length > 0 ? <span>Aus der Beschreibung: {recognized.join(', ')}.</span> : null}
-          {changed.length > 0 ? <span>Von dir ergänzt: {changed.join(', ')}.</span> : null}
-          {unknown.length > 0 ? <span>Noch nicht angegeben: {unknown.join(', ')}.</span> : null}
-        </Stack>
-      </Alert>
+      <Alert severity="success">Die KI hat einen Gerichtsentwurf erstellt. Bitte prüfe die Angaben vor dem Speichern.</Alert>
       {draft.duplicates.map((duplicate) => (
         <Alert key={`${duplicate.dishId}-${duplicate.variantId ?? 'dish'}`} severity="warning" data-testid="duplicate-hint">
           <Stack spacing={1}>
@@ -44,8 +35,4 @@ export function DraftSummary({ draft, edited }: { draft: DishDraft; edited: stri
       ))}
     </Stack>
   );
-}
-
-function label(field: string): string {
-  return DRAFT_FIELD_LABELS[field] ?? field;
 }

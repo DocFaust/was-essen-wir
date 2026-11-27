@@ -18,10 +18,14 @@ final class DishDraftFacts {
             "(?iu)^wir\\s+(?:machen|kochen)\\s+(?:(?:gerne|oft|manchmal|uns|heute)\\s+)*(.+)$");
     private static final Pattern INSTEAD = Pattern.compile("(?iu)mit\\s+(.+?)\\s+statt\\s+([^.,;]+)");
     private static final Pattern ALSO_WITH = Pattern.compile("(?iu)auch\\s+mit\\s+([^.,;]+)");
+    private static final Pattern EXTRA = Pattern.compile(
+            "(?iu)\\bzusätzlich(?:e|en|er)?\\s+(\\p{L}[\\p{L}\\-]{1,40}(?:\\s*(?:,|und)\\s*\\p{L}[\\p{L}\\-]{1,40})*)");
     private static final Pattern INGREDIENT_LIST = Pattern.compile("(?iu)zutaten\\s*:\\s*([^.]*)");
     private static final Pattern FROM_LIST = Pattern.compile("(?iu)\\baus\\s+([^.]{0,160})");
     private static final Pattern SOURCE = Pattern.compile("(?iu)(?:rezeptquelle|quelle)\\s*:\\s*([^.]{1,200})");
     private static final Pattern URL = Pattern.compile("(?i)https?://\\S+");
+    private static final Pattern EXCLUDE = Pattern.compile(
+            "(?iu)\\b(?:ohne|keinen|keine|kein)\\s+(\\p{L}[\\p{L}\\-]{1,40}(?:\\s*(?:,|und)\\s*\\p{L}[\\p{L}\\-]{1,40})*)");
     private static final int MAX_NAME = 120;
 
     private final String name;
@@ -32,6 +36,7 @@ final class DishDraftFacts {
     private final List<String> ingredients;
     private final List<String> removedIngredients;
     private final boolean ingredientsMentioned;
+    private final boolean exclusiveIngredients;
     private final String recipeText;
     private final String recipeUrl;
     private final String recipeSource;
@@ -49,6 +54,7 @@ final class DishDraftFacts {
             List<String> ingredients,
             List<String> removedIngredients,
             boolean ingredientsMentioned,
+            boolean exclusiveIngredients,
             String recipeText,
             String recipeUrl,
             String recipeSource,
@@ -64,6 +70,7 @@ final class DishDraftFacts {
         this.ingredients = ingredients;
         this.removedIngredients = removedIngredients;
         this.ingredientsMentioned = ingredientsMentioned;
+        this.exclusiveIngredients = exclusiveIngredients;
         this.recipeText = recipeText;
         this.recipeUrl = recipeUrl;
         this.recipeSource = recipeSource;
@@ -78,7 +85,7 @@ final class DishDraftFacts {
         List<String> warnings = new ArrayList<>();
         List<String> added = new ArrayList<>();
         List<String> removed = new ArrayList<>();
-        boolean mentioned = collectIngredients(description, added, removed);
+        IngredientRead ingredients = collectIngredients(description, added, removed);
         String name = kind == DraftKind.VARIANT ? variantName(description, added) : dishName(description);
         List<MealType> meals = mealTypes(folded);
         if (kind == DraftKind.VARIANT && !meals.isEmpty()) {
@@ -107,7 +114,8 @@ final class DishDraftFacts {
                 effort,
                 List.copyOf(added),
                 List.copyOf(removed),
-                mentioned,
+                ingredients.mentioned(),
+                ingredients.exclusive(),
                 null,
                 url,
                 source,
@@ -149,6 +157,10 @@ final class DishDraftFacts {
         return ingredientsMentioned;
     }
 
+    boolean exclusiveIngredients() {
+        return exclusiveIngredients;
+    }
+
     String recipeText() {
         return recipeText;
     }
@@ -187,6 +199,7 @@ final class DishDraftFacts {
                 ingredients,
                 removedIngredients,
                 ingredientsMentioned,
+                exclusiveIngredients,
                 recipeText,
                 recipeUrl,
                 recipeSource,
@@ -212,6 +225,7 @@ final class DishDraftFacts {
                 ingredients,
                 removedIngredients,
                 ingredientsMentioned,
+                exclusiveIngredients,
                 recipeText == null ? this.recipeText : recipeText,
                 recipeUrl == null ? this.recipeUrl : recipeUrl,
                 recipeSource == null ? this.recipeSource : recipeSource,
@@ -219,6 +233,40 @@ final class DishDraftFacts {
                 mealPrep,
                 homeOffice,
                 List.copyOf(merged));
+    }
+
+    DishDraftFacts complete(
+            String name,
+            String description,
+            List<MealType> mealTypes,
+            List<String> categories,
+            Effort effort,
+            List<String> ingredients,
+            List<String> removedIngredients,
+            String recipeText,
+            String recipeUrl,
+            String recipeSource,
+            String comments,
+            Boolean mealPrep,
+            Boolean homeOffice,
+            List<String> warnings) {
+        return new DishDraftFacts(
+                name,
+                description,
+                mealTypes,
+                categories,
+                effort,
+                ingredients,
+                removedIngredients,
+                ingredientsMentioned,
+                exclusiveIngredients,
+                recipeText,
+                recipeUrl,
+                recipeSource,
+                comments,
+                mealPrep,
+                homeOffice,
+                List.copyOf(warnings));
     }
 
     private static String dishName(String description) {
@@ -250,21 +298,31 @@ final class DishDraftFacts {
     private static String dishNameFromSentence(String sentence) {
         Matcher leg = LEG.matcher(sentence);
         if (leg.matches()) {
-            return limit(DraftText.cleanPhrase(leg.group(1)));
+            return dishTitle(leg.group(1));
         }
         Matcher eat = EAT.matcher(sentence);
         if (eat.matches()) {
-            return limit(DraftText.cleanPhrase(eat.group(1)));
+            return dishTitle(eat.group(1));
         }
         Matcher cook = COOK.matcher(sentence);
         if (cook.matches()) {
-            return limit(DraftText.cleanPhrase(cook.group(1)));
+            return dishTitle(cook.group(1));
         }
-        if (sentence.split("\\s+").length <= 4 && DraftText.significant(sentence).size() >= 1
-                && !sentence.matches("(?iu)^(leg|lege|erstelle|erzeuge|mach|mache|bitte)\\b.*")) {
-            return limit(DraftText.cleanPhrase(sentence));
+        String stripped = sentence.replaceFirst("(?iu)\\s+\\b(?:ohne|keinen|keine|kein)\\b.*$", "").trim();
+        String candidate = stripped.isEmpty() ? sentence : stripped;
+        if (candidate.split("\\s+").length <= 4 && DraftText.significant(candidate).size() >= 1
+                && !candidate.matches("(?iu)^(leg|lege|erstelle|erzeuge|mach|mache|bitte)\\b.*")) {
+            return dishTitle(candidate);
         }
         return null;
+    }
+
+    private static String dishTitle(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String stripped = raw.replaceFirst("(?iu)\\s+\\b(?:ohne|keinen|keine|kein)\\b.*$", "").trim();
+        return limit(DraftText.cleanPhrase(stripped.isEmpty() ? raw : stripped));
     }
 
     private static String variantName(String description, List<String> added) {
@@ -281,8 +339,9 @@ final class DishDraftFacts {
         return null;
     }
 
-    private static boolean collectIngredients(String description, List<String> added, List<String> removed) {
+    private static IngredientRead collectIngredients(String description, List<String> added, List<String> removed) {
         boolean mentioned = false;
+        boolean exclusive = false;
         Matcher instead = INSTEAD.matcher(description);
         if (instead.find()) {
             added.addAll(splitList(instead.group(1)));
@@ -294,10 +353,16 @@ final class DishDraftFacts {
             added.addAll(splitList(also.group(1)));
             mentioned = true;
         }
+        Matcher extra = EXTRA.matcher(description);
+        if (extra.find()) {
+            added.addAll(splitList(extra.group(1)));
+            mentioned = true;
+        }
         Matcher listed = INGREDIENT_LIST.matcher(description);
         if (listed.find()) {
             added.addAll(splitList(listed.group(1)));
             mentioned = true;
+            exclusive = true;
         }
         Matcher from = FROM_LIST.matcher(description);
         if (from.find()) {
@@ -305,7 +370,13 @@ final class DishDraftFacts {
             if (phrase.contains(" und ") || phrase.contains(",")) {
                 added.addAll(splitList(phrase));
                 mentioned = true;
+                exclusive = true;
             }
+        }
+        Matcher excluded = EXCLUDE.matcher(description);
+        while (excluded.find()) {
+            removed.addAll(splitList(excluded.group(1)));
+            mentioned = true;
         }
         LinkedHashSet<String> uniqueAdded = new LinkedHashSet<>();
         for (String item : added) {
@@ -323,7 +394,10 @@ final class DishDraftFacts {
         }
         removed.clear();
         removed.addAll(uniqueRemoved);
-        return mentioned;
+        return new IngredientRead(mentioned, exclusive);
+    }
+
+    private record IngredientRead(boolean mentioned, boolean exclusive) {
     }
 
     private static List<String> splitList(String phrase) {

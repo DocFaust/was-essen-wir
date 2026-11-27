@@ -34,13 +34,13 @@ const draft: DishDraft = {
   baseDishId: null,
   baseDishName: null,
   name: 'Kartoffelgratin',
-  description: null,
-  mealTypes: [],
-  categories: [],
+  description: 'Ofenkartoffeln mit Sahne.',
+  mealTypes: ['ABENDESSEN'],
+  categories: ['vegetarisch'],
   effort: 'MITTEL',
-  ingredients: [],
+  ingredients: ['Kartoffeln', 'Sahne'],
   ingredientsSpecified: null,
-  recipeText: null,
+  recipeText: 'Kartoffeln und Sahne im Ofen backen.',
   recipeUrl: null,
   recipeSource: null,
   comments: null,
@@ -89,7 +89,7 @@ test('wechselt zwischen manueller Erfassung und KI und legt den Entwurf ins Form
   vi.stubGlobal('fetch', fetchMock);
 
   renderDish();
-  expect(await screen.findByTestId('capture-ai')).toBeInTheDocument();
+  expect(await screen.findByTestId('capture-ai')).toHaveTextContent('Mit KI erstellen');
   expect(screen.getByTestId('dish-name')).toBeInTheDocument();
 
   await user.click(screen.getByTestId('capture-ai'));
@@ -98,12 +98,22 @@ test('wechselt zwischen manueller Erfassung und KI und legt den Entwurf ins Form
   expect(screen.getByTestId('dish-name')).toBeInTheDocument();
 
   await user.click(screen.getByTestId('capture-ai'));
+  expect(
+    screen.getByPlaceholderText(
+      'Gib einen Gerichtsnamen ein oder beschreibe, wie ihr das Gericht zubereitet. Die KI ergänzt die fehlenden Angaben.',
+    ),
+  ).toBeInTheDocument();
   await user.type(screen.getByTestId('draft-description'), 'Wir machen oft Kartoffelgratin.');
   await user.click(screen.getByTestId('draft-submit'));
 
   expect(await screen.findByTestId('dish-name')).toHaveValue('Kartoffelgratin');
-  expect(screen.getByTestId('draft-summary')).toHaveTextContent('Aus der Beschreibung: Name, Aufwand, Meal Prep.');
-  expect(screen.getByTestId('draft-summary')).toHaveTextContent('Noch nicht angegeben: Mahlzeiten, Zutaten, Homeoffice.');
+  expect(screen.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Ofenkartoffeln mit Sahne.');
+  expect(screen.getByRole('textbox', { name: 'Rezept' })).toHaveValue('Kartoffeln und Sahne im Ofen backen.');
+  expect(screen.getByText('Kartoffeln')).toBeInTheDocument();
+  expect(screen.getByTestId('draft-summary')).toHaveTextContent(
+    'Die KI hat einen Gerichtsentwurf erstellt. Bitte prüfe die Angaben vor dem Speichern.',
+  );
+  expect(screen.getByTestId('draft-summary')).not.toHaveTextContent('Noch nicht angegeben');
   expect(screen.getByTestId('duplicate-hint')).toHaveTextContent('Ein ähnliches Gericht existiert bereits: Kartoffelgratin.');
   expect(screen.getByRole('group', { name: 'Aufwand' }).querySelector('[aria-pressed="true"]')).toHaveTextContent('Mittel');
   expect(screen.getByRole('group', { name: 'Meal Prep' }).querySelector('[aria-pressed="true"]')).toHaveTextContent('Geeignet');
@@ -112,7 +122,7 @@ test('wechselt zwischen manueller Erfassung und KI und legt den Entwurf ins Form
   await user.clear(screen.getByTestId('dish-name'));
   await user.type(screen.getByTestId('dish-name'), 'Ofen-Kartoffelgratin');
   await user.click(within(screen.getByRole('group', { name: 'Aufwand' })).getByRole('button', { name: 'Einfach' }));
-  expect(screen.getByTestId('draft-summary')).toHaveTextContent('Von dir ergänzt: Name, Aufwand.');
+  expect(screen.getByTestId('dish-name')).toHaveValue('Ofen-Kartoffelgratin');
 
   await user.click(screen.getByTestId('save-dish'));
   expect(await screen.findByText('Gespeichert')).toBeInTheDocument();
@@ -164,9 +174,38 @@ test('behält die Beschreibung bei einem KI-Fehler und bietet die manuelle Erfas
   await user.click(screen.getByTestId('draft-submit'));
 
   expect(await screen.findByRole('alert')).toHaveTextContent('nicht erreichbar');
+  expect(screen.getByRole('button', { name: 'Erneut versuchen' })).toBeInTheDocument();
   expect(screen.getByTestId('draft-description')).toHaveValue('Wir machen oft Kartoffelgratin.');
   await user.click(screen.getByTestId('draft-manual'));
   expect(screen.getByTestId('dish-name')).toHaveValue('');
+});
+
+test('zeigt fehlendes API-Guthaben nicht als Netzwerkproblem', async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (input) => {
+    if (String(input).includes('/api/ai/status')) {
+      return json({ enabled: true, provider: 'openai' });
+    }
+    return json(
+      {
+        detail: 'Das Guthaben beim KI-Anbieter ist aufgebraucht. Bitte eine administrierende Person informieren.',
+        code: 'AI_QUOTA',
+      },
+      503,
+    );
+  }));
+
+  renderDish();
+  await user.click(await screen.findByTestId('capture-ai'));
+  await user.type(screen.getByTestId('draft-description'), 'Spaghetti Bolognese');
+  await user.click(screen.getByTestId('draft-submit'));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Guthaben');
+  expect(screen.getByRole('alert')).toHaveTextContent('administrierende Person');
+  expect(screen.getByRole('alert')).not.toHaveTextContent('nicht erreichbar');
+  expect(screen.queryByRole('button', { name: 'Erneut versuchen' })).not.toBeInTheDocument();
+  expect(screen.getByTestId('draft-description')).toHaveValue('Spaghetti Bolognese');
+  expect(screen.getByTestId('draft-manual')).toBeInTheDocument();
 });
 
 test('bereitet eine Variante vor und speichert erst auf ausdrückliche Bestätigung', async () => {
@@ -177,8 +216,10 @@ test('bereitet eine Variante vor und speichert erst auf ausdrückliche Bestätig
     baseDishId: 'dish-1',
     baseDishName: 'Lasagne',
     name: 'Mit roten Linsen',
+    description: null,
     effort: null,
     mealPrep: null,
+    recipeText: null,
     ingredients: ['Tomaten', 'roten Linsen'],
     ingredientsSpecified: true,
     recognized: ['name', 'ingredients'],

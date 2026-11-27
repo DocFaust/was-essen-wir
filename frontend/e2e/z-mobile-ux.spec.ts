@@ -9,6 +9,7 @@ test('alltägliche Abläufe bleiben auf schmalen und breiten Displays bedienbar'
 
   await page.setViewportSize({ width: 320, height: 720 });
   await login(page);
+  await clearPlans(page);
   await expect(page.getByTestId('today-panel')).toBeVisible();
   await expect(page.getByTestId('quick-eaten')).toBeVisible();
   await expect(page.getByTestId('show-suggestions')).toBeVisible();
@@ -89,6 +90,28 @@ test('alltägliche Abläufe bleiben auf schmalen und breiten Displays bedienbar'
     await expectChrome(page);
   }
 });
+
+async function clearPlans(page: Page) {
+  const cookies = await page.context().cookies();
+  const csrf = decodeURIComponent(cookies.find((cookie) => cookie.name === 'XSRF-TOKEN')?.value ?? '');
+  const response = await page.request.get(`/api/meal-plans?from=${shiftDate(-14)}&to=${shiftDate(14)}`);
+  expect(response.ok()).toBe(true);
+  const plans = (await response.json()) as { id: string }[];
+  for (const plan of plans) {
+    const deleted = await page.request.delete(`/api/meal-plans/${plan.id}`, {
+      headers: { 'X-XSRF-TOKEN': csrf },
+    });
+    expect(deleted.ok()).toBe(true);
+  }
+}
+
+function shiftDate(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
 
 async function login(page: Page) {
   await page.goto('/');
