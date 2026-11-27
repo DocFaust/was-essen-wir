@@ -30,6 +30,6 @@ class SecureCookiesValidatorTest {
 
     private static SecurityProperties properties(boolean requireSecure) {
         return new SecurityProperties(
-                8, Duration.ofMinutes(15), 8, Duration.ofMinutes(15), 100, requireSecure, false, "");
+                8, Duration.ofMinutes(15), 30, 8, Duration.ofMinutes(15), 100, requireSecure, false, "");
     }
 }

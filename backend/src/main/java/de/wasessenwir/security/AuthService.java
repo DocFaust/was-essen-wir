@@ -52,15 +52,19 @@ public class AuthService {
     public UserResponse login(LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         String username = request == null || request.username() == null ? "" : request.username();
         String password = request == null ? null : request.password();
-        String key = "login:" + Usernames.normalize(username) + "|" + clientIpResolver.resolve(httpRequest);
-        if (!limiter.tryAcquire(key, properties.loginMaxAttempts(), properties.loginWindow())) {
-            throw new ApiException(
-                    HttpStatus.TOO_MANY_REQUESTS,
-                    "Zu viele Anmeldeversuche. Bitte später erneut versuchen.",
-                    "LOGIN_RATE_LIMITED");
+        String clientIp = clientIpResolver.resolve(httpRequest);
+        // Zuerst die Grenze pro Client-IP: Sie gilt für jeden Versuch, auch mit wechselnden
+        // Benutzernamen, und begrenzt so die Zahl der Limiter-Schlüssel und BCrypt-Prüfungen pro IP.
+        String ipKey = "login-ip:" + clientIp;
+        if (!limiter.tryAcquire(ipKey, properties.loginIpMaxAttempts(), properties.loginWindow())) {
+            throw loginRateLimited();
         }
         if (username.isBlank() || password == null || password.isBlank()) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Benutzername oder Passwort ist falsch.", "LOGIN_FAILED");
+        }
+        String key = "login:" + Usernames.normalize(username) + "|" + clientIp;
+        if (!limiter.tryAcquire(key, properties.loginMaxAttempts(), properties.loginWindow())) {
+            throw loginRateLimited();
         }
         try {
             Authentication authenticated = authenticationManager.authenticate(
@@ -74,10 +78,18 @@ public class AuthService {
                 rememberMe.forget(httpRequest, httpResponse);
             }
             limiter.reset(key);
+            limiter.reset(ipKey);
             return users.current(principal.id());
         } catch (AuthenticationException exception) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Benutzername oder Passwort ist falsch.", "LOGIN_FAILED");
         }
+    }
+
+    private static ApiException loginRateLimited() {
+        return new ApiException(
+                HttpStatus.TOO_MANY_REQUESTS,
+                "Zu viele Anmeldeversuche. Bitte später erneut versuchen.",
+                "LOGIN_RATE_LIMITED");
     }
 
     public void logout(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
