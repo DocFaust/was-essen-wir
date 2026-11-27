@@ -86,12 +86,44 @@ class DishDraftValidatorTest {
                 DraftKind.DISH);
 
         assertThat(inventedFacts.recipeUrl()).isNull();
-        assertThat(inventedFacts.recipeSource()).isNull();
+        assertThat(inventedFacts.recipeSource()).isEqualTo("KI-generiert");
         assertThat(inventedFacts.comments()).isNull();
         assertThat(inventedFacts.recipeText()).isNotBlank();
         assertThat(stated.recipeUrl()).isEqualTo("https://example.com/eigene");
         assertThat(stated.recipeSource()).isEqualTo("Familienkochbuch");
         assertThat(stated.comments()).isNull();
+    }
+
+    @Test
+    void marksAnAdoptedRecipeAsGeneratedWithoutAModelLabel() {
+        String model = bolognese().replace("\"recipeSource\":\"KI-generiert\"", "\"recipeSource\":null");
+
+        DishDraftFacts facts = validator.accept(model, "Spaghetti Bolognese", DraftKind.DISH);
+
+        assertThat(facts.recipeText()).isNotBlank();
+        assertThat(facts.recipeSource()).isEqualTo("KI-generiert");
+    }
+
+    @Test
+    void warnsWhenTheRecipeStillMentionsAnExcludedIngredient() {
+        String model = bolognese().replace(
+                "\"recipeText\":\"Zwiebeln und Karotten anschwitzen, Hackfleisch anbraten und mit Tomaten köcheln.\"",
+                "\"recipeText\":\"Sellerie fein würfeln und mit dem Hackfleisch anbraten.\"");
+
+        DishDraftFacts excluded = validator.accept(model, "Spaghetti Bolognese ohne Sellerie", DraftKind.DISH);
+        DishDraftFacts replaced = validator.accept(
+                model.replace("Sellerie fein würfeln und mit dem Hackfleisch anbraten.", "Hackfleisch anbraten und Linsen zugeben."),
+                "Mit roten Linsen statt Hackfleisch.",
+                DraftKind.VARIANT);
+        DishDraftFacts clean = validator.accept(
+                model.replace("Sellerie fein würfeln und mit dem Hackfleisch anbraten.", "Zwiebeln anschwitzen und Linsen zugeben."),
+                "Mit roten Linsen statt Hackfleisch.",
+                DraftKind.VARIANT);
+
+        assertThat(excluded.ingredients()).noneMatch(item -> item.toLowerCase().contains("sellerie"));
+        assertThat(excluded.warnings()).anyMatch(warning -> warning.contains("Zubereitung"));
+        assertThat(replaced.warnings()).anyMatch(warning -> warning.contains("Zubereitung"));
+        assertThat(clean.warnings()).noneMatch(warning -> warning.contains("Zubereitung"));
     }
 
     @Test

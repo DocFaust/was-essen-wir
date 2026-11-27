@@ -45,6 +45,9 @@ public class DishDraftValidator {
         List<String> removed = removed(facts, model, !unknown);
         List<String> ingredients = ingredients(kind, facts, model, removed, !unknown);
         String recipeText = unknown ? null : plainText(model.recipeText(), 4_000);
+        if (recipeText != null && mentionsRemoved(recipeText, facts.removedIngredients())) {
+            addWarning(warnings, "Die Zubereitung nennt noch eine ausgeschlossene oder ersetzte Zutat. Bitte prüfe den Text.");
+        }
         return facts.complete(
                 name,
                 unknown ? null : plainText(model.description(), 4_000),
@@ -55,7 +58,7 @@ public class DishDraftValidator {
                 List.copyOf(removed),
                 recipeText,
                 first(facts.recipeUrl(), supportedUrl(model.recipeUrl(), description)),
-                source(facts, model, description, recipeText),
+                source(facts, recipeText),
                 first(facts.comments(), supportedText(model.comments(), description, 500)),
                 triState(kind, facts.mealPrep(), model.mealPrep(), dishCompletion),
                 triState(kind, facts.homeOffice(), model.homeOffice(), dishCompletion),
@@ -244,26 +247,28 @@ public class DishDraftValidator {
         return value.trim();
     }
 
-    private static String source(DishDraftFacts facts, ModelDraft model, String description, String recipeText) {
+    private static String source(DishDraftFacts facts, String recipeText) {
         if (facts.recipeSource() != null) {
             return facts.recipeSource();
         }
-        if (recipeText != null && generatedSource(model.recipeSource())) {
+        if (recipeText != null) {
             return "KI-generiert";
         }
-        String grounded = supportedText(model.recipeSource(), description, 500);
-        if (generatedSource(grounded)) {
-            return "KI-generiert";
-        }
-        return grounded;
+        return null;
     }
 
-    private static boolean generatedSource(String value) {
-        if (value == null) {
-            return false;
+    private static boolean mentionsRemoved(String recipeText, List<String> removed) {
+        String folded = DraftText.fold(recipeText);
+        for (String item : removed) {
+            String needle = DraftText.fold(item);
+            if (needle.length() >= 5 && folded.contains(needle)) {
+                return true;
+            }
+            if (DraftText.mentioned(folded, needle)) {
+                return true;
+            }
         }
-        String folded = DraftText.fold(value);
-        return folded.equals("ki-generiert") || folded.equals("ki generiert");
+        return false;
     }
 
     private static String supportedText(String value, String description, int max) {

@@ -80,6 +80,9 @@ class DishDraftFactsTest {
         assertThat(listed.ingredients()).containsExactly("rote Linsen", "Karotten");
         assertThat(named.ingredients()).isEmpty();
         assertThat(named.name()).isEqualTo("Hähnchencurry mit Reis");
+        DishDraftFacts extra = DishDraftFacts.read("Mit zusätzlichen Champignons.", DraftKind.VARIANT);
+        assertThat(extra.ingredients()).containsExactly("Champignons");
+        assertThat(extra.exclusiveIngredients()).isFalse();
     }
 
     @Test

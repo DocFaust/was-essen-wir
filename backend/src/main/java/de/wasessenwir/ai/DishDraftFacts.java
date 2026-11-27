@@ -18,6 +18,8 @@ final class DishDraftFacts {
             "(?iu)^wir\\s+(?:machen|kochen)\\s+(?:(?:gerne|oft|manchmal|uns|heute)\\s+)*(.+)$");
     private static final Pattern INSTEAD = Pattern.compile("(?iu)mit\\s+(.+?)\\s+statt\\s+([^.,;]+)");
     private static final Pattern ALSO_WITH = Pattern.compile("(?iu)auch\\s+mit\\s+([^.,;]+)");
+    private static final Pattern EXTRA = Pattern.compile(
+            "(?iu)\\bzusätzlich(?:e|en|er)?\\s+(\\p{L}[\\p{L}\\-]{1,40}(?:\\s*(?:,|und)\\s*\\p{L}[\\p{L}\\-]{1,40})*)");
     private static final Pattern INGREDIENT_LIST = Pattern.compile("(?iu)zutaten\\s*:\\s*([^.]*)");
     private static final Pattern FROM_LIST = Pattern.compile("(?iu)\\baus\\s+([^.]{0,160})");
     private static final Pattern SOURCE = Pattern.compile("(?iu)(?:rezeptquelle|quelle)\\s*:\\s*([^.]{1,200})");
@@ -349,6 +351,11 @@ final class DishDraftFacts {
         Matcher also = ALSO_WITH.matcher(description);
         if (also.find()) {
             added.addAll(splitList(also.group(1)));
+            mentioned = true;
+        }
+        Matcher extra = EXTRA.matcher(description);
+        if (extra.find()) {
+            added.addAll(splitList(extra.group(1)));
             mentioned = true;
         }
         Matcher listed = INGREDIENT_LIST.matcher(description);

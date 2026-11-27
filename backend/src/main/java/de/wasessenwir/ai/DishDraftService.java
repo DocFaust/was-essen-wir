@@ -173,12 +173,6 @@ public class DishDraftService {
         if (!facts.ingredientsMentioned() && additions.isEmpty() && facts.removedIngredients().isEmpty()) {
             return new IngredientChoice(List.of(), false, List.of());
         }
-        if (facts.ingredientsMentioned() && facts.removedIngredients().isEmpty()) {
-            return new IngredientChoice(
-                    additions,
-                    true,
-                    List.of("Es wurden nur die genannten Zutaten übernommen. Bitte prüfe die Liste."));
-        }
         boolean resolved = facts.removedIngredients().stream()
                 .allMatch(removed -> baseIngredients.stream().anyMatch(item -> DraftText.sameIngredient(item, removed)));
         if (facts.ingredientsMentioned() && !facts.removedIngredients().isEmpty() && !resolved) {
@@ -198,9 +192,11 @@ public class DishDraftService {
                 merged.add(item);
             }
         }
-        String warning = facts.ingredientsMentioned()
+        String warning = !facts.removedIngredients().isEmpty() && facts.ingredientsMentioned()
                 ? "Bitte prüfe die Zutaten. Übernommen wurde die beschriebene Ersetzung."
-                : "Bitte prüfe die vorgeschlagenen Zutaten.";
+                : facts.ingredientsMentioned()
+                        ? "Bitte prüfe die Zutaten. Die genannten Zutaten wurden zum Grundgericht ergänzt."
+                        : "Bitte prüfe die vorgeschlagenen Zutaten.";
         return new IngredientChoice(List.copyOf(merged), true, List.of(warning));
     }
 

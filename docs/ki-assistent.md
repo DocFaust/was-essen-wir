@@ -282,7 +282,7 @@ Die Antwort an den Browser mappt das auf die vorhandenen DTOs. `removedIngredien
 
 Das Modell erstellt einen Entwurf. Ein bekannter Gerichtsname genügt. Es darf Beschreibung, Mahlzeiten, Kategorien, Aufwand, typische Zutaten ohne Mengen, eine kurze Zubereitung, Meal Prep und Homeoffice ergänzen. Ausdrückliche Angaben im Text haben Vorrang, auch wenn das Modell etwas anderes liefert. `false` gilt bei ausdrücklicher Verneinung. Kennt das Modell das Gericht nicht sicher, lässt es die ergänzten Felder leer und setzt `warnings` auf `unbekannt`. Das Backend übernimmt dann kein Rezept und keine erfundenen Zutaten.
 
-Nicht ergänzt werden persönliche Kommentare, Familiengewohnheiten, Rezeptlinks und externe Rezeptquellen. Eine ergänzte Zubereitung darf `recipeSource` `KI-generiert` tragen. Eine Adresse oder Quelle aus dem Text bleibt erhalten und gewinnt gegen die Kennzeichnung.
+Nicht ergänzt werden persönliche Kommentare, Familiengewohnheiten, Rezeptlinks und externe Rezeptquellen. Übernimmt der Entwurf eine Zubereitung und nennt die Person keine Quelle, setzt das Backend `recipeSource` auf `KI-generiert`, auch wenn das Modell die Kennzeichnung weglässt. Eine Quelle aus dem Text bleibt erhalten und gewinnt. Nennt der Zubereitungstext eine ausdrücklich ausgeschlossene oder ersetzte Zutat, erscheint ein Prüfhinweis.
 
 | Text | Ergebnis |
 | --- | --- |
@@ -300,7 +300,7 @@ Nicht ergänzt werden persönliche Kommentare, Familiengewohnheiten, Rezeptlinks
 
 Es gibt keine Minutenangabe in der Datenbank. Eine genannte Dauer wird auf die Aufwandsklasse abgebildet. Mengenangaben in Zutaten werden entfernt.
 
-Zutaten aus dem Text kommen aus „mit X statt Y“, „auch mit“, „Zutaten:“, „aus A und B“ und „ohne/kein“. „mit Reis“ im Namen eines Gerichts ist keine Zutat. Bei einem Grundgericht ohne solche Liste gelten die typischen Zutaten des Modells. Eine ausdrückliche Liste ersetzt sie. Bei einer Variante bleiben nicht genannte Eigenschaften leer und werden vererbt. Eine Ersetzung übernimmt die übrige Liste des Grundgerichts nur, wenn die ersetzte Zutat darin vorkommt. Sonst stehen die genannten und die zulässigen Ergänzungen im Formular, mit einem Hinweis zur Prüfung.
+Zutaten aus dem Text kommen aus „mit X statt Y“, „auch mit“, „mit zusätzlichen“, „Zutaten:“, „aus A und B“ und „ohne/kein“. „mit Reis“ im Namen eines Gerichts ist keine Zutat. Bei einem Grundgericht ohne solche Liste gelten die typischen Zutaten des Modells. Eine ausdrückliche Liste ersetzt sie. Bei einer Variante bleiben nicht genannte Eigenschaften leer und werden vererbt. Hinzugefügte Zutaten ergänzen die Liste des Grundgerichts. Nur „Zutaten:“ und „aus A und B“ ersetzen sie. Eine Ersetzung übernimmt die übrige Liste des Grundgerichts nur, wenn die ersetzte Zutat darin vorkommt. Sonst stehen die genannten und die zulässigen Ergänzungen im Formular, mit einem Hinweis zur Prüfung.
 
 ### Duplikate
 
